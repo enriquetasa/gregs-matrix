@@ -254,6 +254,7 @@ export function MatrixApp({ slug }: { slug: string }) {
   const copyLinkButtonRef = useRef<HTMLButtonElement>(null);
   const [copyLinkLabel, setCopyLinkLabel] = useState("Copy link");
   const [copyAnnounce, setCopyAnnounce] = useState<string | null>(null);
+  const [exportKind, setExportKind] = useState<null | "png" | "pdf">(null);
   const undoPastRef = useRef<HistoryFrame[]>([]);
   const undoFutureRef = useRef<HistoryFrame[]>([]);
   const [historyTick, setHistoryTick] = useState(0);
@@ -647,6 +648,7 @@ export function MatrixApp({ slug }: { slug: string }) {
   const exportImage = async () => {
     const node = document.getElementById("matrix-export-root");
     if (!node) return;
+    setExportKind("png");
     setInlineStatus("Generating PNG…");
     setBusy(true);
     try {
@@ -668,12 +670,14 @@ export function MatrixApp({ slug }: { slug: string }) {
     } finally {
       setBusy(false);
       setInlineStatus(null);
+      setExportKind(null);
     }
   };
 
   const exportPdf = async () => {
     const node = document.getElementById("matrix-export-root");
     if (!node) return;
+    setExportKind("pdf");
     setInlineStatus("Generating PDF…");
     setBusy(true);
     try {
@@ -700,6 +704,7 @@ export function MatrixApp({ slug }: { slug: string }) {
     } finally {
       setBusy(false);
       setInlineStatus(null);
+      setExportKind(null);
     }
   };
 
@@ -862,16 +867,28 @@ export function MatrixApp({ slug }: { slug: string }) {
             className="rounded-full border-2 border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-sm font-medium text-[color:var(--foreground)] shadow-sm hover:bg-[color:var(--surface-elevated)] disabled:opacity-50"
             onClick={() => void exportImage()}
             disabled={busy}
+            aria-busy={exportKind === "png"}
+            aria-label={
+              exportKind === "png"
+                ? "Preparing PNG download"
+                : "Export matrix as PNG"
+            }
           >
-            Export PNG
+            {exportKind === "png" ? "Preparing PNG…" : "Export PNG"}
           </button>
           <button
             type="button"
             className="rounded-full border-2 border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-sm font-medium text-[color:var(--foreground)] shadow-sm hover:bg-[color:var(--surface-elevated)] disabled:opacity-50"
             onClick={() => void exportPdf()}
             disabled={busy}
+            aria-busy={exportKind === "pdf"}
+            aria-label={
+              exportKind === "pdf"
+                ? "Preparing PDF download"
+                : "Export matrix as PDF"
+            }
           >
-            Export PDF
+            {exportKind === "pdf" ? "Preparing PDF…" : "Export PDF"}
           </button>
           <button
             type="button"
