@@ -175,6 +175,7 @@ export function MatrixApp({ slug }: { slug: string }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [inlineStatus, setInlineStatus] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -256,6 +257,7 @@ export function MatrixApp({ slug }: { slug: string }) {
   const onUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
     setUnlockError(null);
+    setInlineStatus("Unlocking…");
     setBusy(true);
     try {
       const res = await fetch(`/api/matrices/${slug}/unlock`, {
@@ -280,6 +282,7 @@ export function MatrixApp({ slug }: { slug: string }) {
       await load();
     } finally {
       setBusy(false);
+      setInlineStatus(null);
     }
   };
 
@@ -310,6 +313,7 @@ export function MatrixApp({ slug }: { slug: string }) {
           ),
         };
       });
+      setInlineStatus("Moving note…");
       setBusy(true);
       const res = await fetch(`/api/matrices/${slug}/topics/${topicId}`, {
         method: "PATCH",
@@ -325,6 +329,7 @@ export function MatrixApp({ slug }: { slug: string }) {
       await load();
     } finally {
       setBusy(false);
+      setInlineStatus(null);
       setActiveDragId(null);
     }
   };
@@ -338,6 +343,7 @@ export function MatrixApp({ slug }: { slug: string }) {
       setAddError("Use 1–120 characters.");
       return;
     }
+    setInlineStatus("Adding note…");
     setBusy(true);
     try {
       const res = await fetch(`/api/matrices/${slug}/topics`, {
@@ -356,11 +362,13 @@ export function MatrixApp({ slug }: { slug: string }) {
       await load();
     } finally {
       setBusy(false);
+      setInlineStatus(null);
     }
   };
 
   const deleteTopic = async (topicId: string) => {
     if (state.status !== "ready" || !state.authorized) return;
+    setInlineStatus("Deleting note…");
     setBusy(true);
     try {
       await fetch(`/api/matrices/${slug}/topics/${topicId}`, {
@@ -370,6 +378,7 @@ export function MatrixApp({ slug }: { slug: string }) {
       await load();
     } finally {
       setBusy(false);
+      setInlineStatus(null);
     }
   };
 
@@ -385,6 +394,7 @@ export function MatrixApp({ slug }: { slug: string }) {
   const exportImage = async () => {
     const node = document.getElementById("matrix-export-root");
     if (!node) return;
+    setInlineStatus("Generating PNG…");
     setBusy(true);
     try {
       await document.fonts.ready;
@@ -404,12 +414,14 @@ export function MatrixApp({ slug }: { slug: string }) {
       showToast("Image export failed");
     } finally {
       setBusy(false);
+      setInlineStatus(null);
     }
   };
 
   const exportPdf = async () => {
     const node = document.getElementById("matrix-export-root");
     if (!node) return;
+    setInlineStatus("Generating PDF…");
     setBusy(true);
     try {
       await document.fonts.ready;
@@ -434,6 +446,7 @@ export function MatrixApp({ slug }: { slug: string }) {
       showToast("PDF export failed");
     } finally {
       setBusy(false);
+      setInlineStatus(null);
     }
   };
 
@@ -441,6 +454,7 @@ export function MatrixApp({ slug }: { slug: string }) {
     e.preventDefault();
     if (state.status !== "ready" || !state.authorized) return;
     setSettingsError(null);
+    setInlineStatus("Saving password…");
     setBusy(true);
     try {
       const body: Record<string, unknown> = {};
@@ -451,6 +465,7 @@ export function MatrixApp({ slug }: { slug: string }) {
       if (Object.keys(body).length === 0) {
         setSettingsError("Enter a new password or cancel.");
         setBusy(false);
+        setInlineStatus(null);
         return;
       }
       const res = await fetch(`/api/matrices/${slug}`, {
@@ -478,6 +493,7 @@ export function MatrixApp({ slug }: { slug: string }) {
       showToast("Password updated");
     } finally {
       setBusy(false);
+      setInlineStatus(null);
     }
   };
 
@@ -554,6 +570,14 @@ export function MatrixApp({ slug }: { slug: string }) {
           <p className="mt-1 text-sm text-[color:var(--muted)]">
             Tap a quadrant to add a note.
           </p>
+          {inlineStatus ? (
+            <p
+              className="mt-2 text-xs font-medium text-[color:var(--accent-strong)]"
+              aria-live="polite"
+            >
+              {inlineStatus}
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
