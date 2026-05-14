@@ -86,9 +86,9 @@ function DraggableTopic({
       {...listeners}
       {...attributes}
       data-topic
-      className="group relative cursor-grab touch-none rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 text-sm text-[color:var(--foreground)] shadow-md active:cursor-grabbing md:shadow-lg md:[transform:rotate(0.5deg)]"
+      className="group relative w-fit max-w-[11rem] shrink-0 cursor-grab touch-none rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-xs leading-snug text-[color:var(--foreground)] shadow-sm active:cursor-grabbing md:max-w-[12rem] md:px-2.5 md:py-2 md:text-sm md:shadow-md md:[transform:rotate(0.5deg)]"
     >
-      <p className="pr-6 leading-snug">{topic.text}</p>
+      <p className="pr-7 leading-snug">{topic.text}</p>
       {!disabled && (
         <button
           type="button"
@@ -137,7 +137,7 @@ function DroppableQuadrant({
       <div className="pointer-events-none select-none text-xs font-semibold uppercase tracking-wide text-[color:var(--accent-strong)]">
         {label}
       </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">{children}</div>
+      <div className="flex min-h-0 flex-1 flex-wrap content-start gap-2 overflow-y-auto">{children}</div>
     </div>
   );
 }
