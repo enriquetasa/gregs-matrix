@@ -1,9 +1,11 @@
 "use client";
 
-import type { DragEndEvent } from "@dnd-kit/core";
+import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
+  defaultDropAnimationSideEffects,
   useDraggable,
   useDroppable,
   useSensor,
@@ -44,6 +46,14 @@ type LoadState =
       topics: TopicDto[];
     };
 
+const dropAnimation = {
+  sideEffects: defaultDropAnimationSideEffects({
+    styles: {
+      active: { opacity: "0.35" },
+    },
+  }),
+};
+
 const quadrantSurface: Record<Quadrant, string> = {
   DO_NOW:
     "bg-[color:var(--quad-do-now-bg)] border-[color:var(--quad-do-now-border)]",
@@ -61,6 +71,14 @@ const gridQuadrants: Quadrant[][] = [
   ["DO_NOW", "DO_WHEN_PASSING"],
 ];
 
+function DragTopicPreview({ text }: { text: string }) {
+  return (
+    <div className="w-fit max-w-[12rem] cursor-grabbing rounded-lg border-2 border-[color:var(--accent-strong)] bg-[color:var(--surface)] px-2 py-1.5 text-xs font-medium text-[color:var(--foreground)] shadow-xl ring-2 ring-[color:var(--accent-secondary)]/50">
+      <p className="leading-snug">{text}</p>
+    </div>
+  );
+}
+
 function DraggableTopic({
   topic,
   disabled,
@@ -77,7 +95,7 @@ function DraggableTopic({
     });
   const style = {
     transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.85 : 1,
+    opacity: isDragging ? 0.35 : 1,
   };
   return (
     <div
@@ -156,10 +174,16 @@ export function MatrixApp({ slug }: { slug: string }) {
   const [newPassword, setNewPassword] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   );
+
+  const activeDragTopic = useMemo(() => {
+    if (!activeDragId || state.status !== "ready") return null;
+    return state.topics.find((t) => t.id === activeDragId) ?? null;
+  }, [activeDragId, state]);
 
   const load = useCallback(async () => {
     try {
@@ -259,26 +283,49 @@ export function MatrixApp({ slug }: { slug: string }) {
     }
   };
 
+  const onDragStart = (event: DragStartEvent) => {
+    setActiveDragId(String(event.active.id));
+  };
+
+  const onDragCancel = () => {
+    setActiveDragId(null);
+  };
+
   const onDragEnd = async (event: DragEndEvent) => {
-    if (state.status !== "ready" || !state.authorized) return;
-    const { active, over } = event;
-    if (!over) return;
-    const topicId = String(active.id);
-    const nextQuadrant = over.id as Quadrant;
-    const topic = state.topics.find((t) => t.id === topicId);
-    if (!topic || topic.quadrant === nextQuadrant) return;
-    setBusy(true);
     try {
+      if (state.status !== "ready" || !state.authorized) return;
+      const { active, over } = event;
+      if (!over) return;
+      const topicId = String(active.id);
+      const nextQuadrant = over.id as Quadrant;
+      const topic = state.topics.find((t) => t.id === topicId);
+      if (!topic || topic.quadrant === nextQuadrant) return;
+      const prevTopics = state.topics;
+      setState((s) => {
+        if (s.status !== "ready") return s;
+        return {
+          ...s,
+          topics: s.topics.map((t) =>
+            t.id === topicId ? { ...t, quadrant: nextQuadrant } : t,
+          ),
+        };
+      });
+      setBusy(true);
       const res = await fetch(`/api/matrices/${slug}/topics/${topicId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ quadrant: nextQuadrant }),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        setState((s) => (s.status === "ready" ? { ...s, topics: prevTopics } : s));
+        showToast("Could not move note.");
+        return;
+      }
       await load();
     } finally {
       setBusy(false);
+      setActiveDragId(null);
     }
   };
 
@@ -558,7 +605,12 @@ export function MatrixApp({ slug }: { slug: string }) {
       )}
 
       <div className="flex min-h-0 w-full flex-1 flex-col">
-        <DndContext sensors={sensors} onDragEnd={(e) => void onDragEnd(e)}>
+        <DndContext
+          sensors={sensors}
+          onDragStart={onDragStart}
+          onDragCancel={onDragCancel}
+          onDragEnd={(e) => void onDragEnd(e)}
+        >
           <div
             id="matrix-export-root"
             className="mx-auto box-border flex min-h-[75dvh] w-[min(100%,max(75dvw,16rem))] max-w-full flex-1 flex-col rounded-2xl border-2 border-[color:var(--border)] bg-[color:var(--surface-elevated)] p-3 shadow-[0_12px_40px_rgba(24,0,72,0.1)] sm:p-5"
@@ -662,6 +714,11 @@ export function MatrixApp({ slug }: { slug: string }) {
 
           </div>
         </div>
+        <DragOverlay dropAnimation={dropAnimation}>
+          {activeDragTopic ? (
+            <DragTopicPreview text={activeDragTopic.text} />
+          ) : null}
+        </DragOverlay>
       </DndContext>
       </div>
 
