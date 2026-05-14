@@ -18,7 +18,14 @@ import { jsPDF } from "jspdf";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { getMatrixExportImageOptions } from "@/lib/matrix-export-image";
 import { messageFromFailedResponse } from "@/lib/http-error-message";
 import { QUADRANT_LABELS } from "@/lib/quadrants";
@@ -127,52 +134,54 @@ function DraggableTopic({
       {...listeners}
       {...attributes}
       data-topic
-      className={`group relative w-fit max-w-[11rem] shrink-0 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-xs leading-snug text-[color:var(--foreground)] shadow-sm md:max-w-[12rem] md:px-2.5 md:py-2 md:text-sm md:shadow-md md:[transform:rotate(0.5deg)] ${
+      className={`group flex min-w-0 max-w-[11rem] flex-col rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-xs leading-snug text-[color:var(--foreground)] shadow-sm md:max-w-[12rem] md:px-2.5 md:py-2 md:text-sm md:shadow-md md:[transform:rotate(0.5deg)] ${
         readOnly
           ? "cursor-default"
           : "cursor-grab touch-none active:cursor-grabbing"
       }`}
     >
-      {editing ? (
-        <textarea
-          className="w-full min-w-[8rem] resize-none rounded border border-[color:var(--border)] bg-[color:var(--surface-elevated)] px-1 py-0.5 text-xs text-[color:var(--foreground)] outline-none ring-[color:var(--accent-secondary)]/40 focus:ring-1"
-          rows={3}
-          maxLength={120}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onPointerDown={(e) => e.stopPropagation()}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
+      <div className="min-w-0 flex-1">
+        {editing ? (
+          <textarea
+            className="w-full min-w-0 resize-none rounded border border-[color:var(--border)] bg-[color:var(--surface-elevated)] px-1 py-0.5 text-xs text-[color:var(--foreground)] outline-none ring-[color:var(--accent-secondary)]/40 focus:ring-1"
+            rows={3}
+            maxLength={120}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onPointerDown={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setDraft(topic.text);
+                setEditing(false);
+              }
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void finishEdit();
+              }
+            }}
+            onBlur={() => void finishEdit()}
+            autoFocus
+          />
+        ) : (
+          <p
+            className="cursor-text break-words leading-snug"
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              if (readOnly || disabled) return;
+              setEditing(true);
               setDraft(topic.text);
-              setEditing(false);
-            }
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              void finishEdit();
-            }
-          }}
-          onBlur={() => void finishEdit()}
-          autoFocus
-        />
-      ) : (
-        <p
-          className="cursor-text pr-7 leading-snug"
-          onDoubleClick={(e) => {
-            e.stopPropagation();
-            if (readOnly || disabled) return;
-            setEditing(true);
-            setDraft(topic.text);
-          }}
-        >
-          {topic.text}
-        </p>
-      )}
-      {!disabled && !readOnly && !editing && (
-        <>
+            }}
+          >
+            {topic.text}
+          </p>
+        )}
+      </div>
+      {!disabled && !readOnly && !editing ? (
+        <div className="mt-1.5 flex shrink-0 justify-end gap-1 border-t border-[color:var(--border)]/70 pt-1.5">
           <button
             type="button"
             aria-label="Edit topic"
-            className="absolute right-8 top-1 flex h-7 w-7 items-center justify-center rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] text-xs font-semibold text-[color:var(--muted)] shadow-sm hover:text-[color:var(--foreground)]"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] text-xs font-semibold text-[color:var(--muted)] shadow-sm hover:text-[color:var(--foreground)]"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
@@ -185,7 +194,7 @@ function DraggableTopic({
           <button
             type="button"
             aria-label="Remove topic"
-            className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] text-sm font-bold text-[color:var(--foreground)] shadow-sm hover:bg-[color:var(--danger)]/15 hover:text-[color:var(--danger)]"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] text-sm font-bold text-[color:var(--foreground)] shadow-sm hover:bg-[color:var(--danger)]/15 hover:text-[color:var(--danger)]"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
@@ -194,8 +203,8 @@ function DraggableTopic({
           >
             ×
           </button>
-        </>
-      )}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -264,6 +273,9 @@ export function MatrixApp({ slug }: { slug: string }) {
   const [copyLinkLabel, setCopyLinkLabel] = useState("Copy link");
   const [copyAnnounce, setCopyAnnounce] = useState<string | null>(null);
   const [exportKind, setExportKind] = useState<null | "png" | "pdf">(null);
+  const [matrixTitleEditing, setMatrixTitleEditing] = useState(false);
+  const [matrixTitleDraft, setMatrixTitleDraft] = useState("");
+  const matrixTitleInputRef = useRef<HTMLInputElement>(null);
   const undoPastRef = useRef<HistoryFrame[]>([]);
   const undoFutureRef = useRef<HistoryFrame[]>([]);
   const [historyTick, setHistoryTick] = useState(0);
@@ -342,6 +354,8 @@ export function MatrixApp({ slug }: { slug: string }) {
     undoPastRef.current = [];
     undoFutureRef.current = [];
     bumpHistory();
+    setMatrixTitleEditing(false);
+    setMatrixTitleDraft("");
   }, [slug, bumpHistory]);
 
   useEffect(() => {
@@ -349,6 +363,14 @@ export function MatrixApp({ slug }: { slug: string }) {
     const id = window.setInterval(() => void load(), 15_000);
     return () => window.clearInterval(id);
   }, [load, state]);
+
+  useLayoutEffect(() => {
+    if (!matrixTitleEditing) return;
+    const el = matrixTitleInputRef.current;
+    if (!el) return;
+    el.focus();
+    el.select();
+  }, [matrixTitleEditing]);
 
   const topicsByQuadrant = useMemo(() => {
     if (state.status !== "ready") return new Map<Quadrant, TopicDto[]>();
@@ -763,6 +785,35 @@ export function MatrixApp({ slug }: { slug: string }) {
     }
   };
 
+  const finishMatrixTitleEdit = useCallback(async () => {
+    if (state.status !== "ready" || readOnly || !state.authorized) {
+      setMatrixTitleEditing(false);
+      return;
+    }
+    const prev = state.matrix.title?.trim() ?? "";
+    const next = matrixTitleDraft.trim();
+    setMatrixTitleEditing(false);
+    if (next === prev) return;
+    setInlineStatus("Saving title…");
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/matrices/${slug}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ title: next }),
+      });
+      if (!res.ok) {
+        showToast(await messageFromFailedResponse(res));
+        return;
+      }
+      await load();
+    } finally {
+      setBusy(false);
+      setInlineStatus(null);
+    }
+  }, [slug, state, matrixTitleDraft, readOnly, load, showToast]);
+
   if (state.status === "loading") {
     return (
       <div className="flex min-h-[50vh] items-center justify-center text-[color:var(--muted)]">
@@ -832,9 +883,49 @@ export function MatrixApp({ slug }: { slug: string }) {
         {copyAnnounce ?? ""}
       </div>
       <header className="flex shrink-0 flex-wrap items-center justify-between gap-4">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="text-xl font-bold tracking-tight text-[color:var(--foreground)] md:text-2xl">
-            {state.matrix.title?.trim() || "Importance × Ease"}
+            {matrixTitleEditing ? (
+              <input
+                ref={matrixTitleInputRef}
+                type="text"
+                maxLength={200}
+                value={matrixTitleDraft}
+                onChange={(e) => setMatrixTitleDraft(e.target.value)}
+                onBlur={() => void finishMatrixTitleEdit()}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setMatrixTitleDraft(state.matrix.title?.trim() ?? "");
+                    setMatrixTitleEditing(false);
+                  }
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                placeholder="Importance × Ease"
+                aria-label="Matrix title"
+                className="w-full max-w-xl rounded-md border-2 border-[color:var(--border)] bg-[color:var(--surface-elevated)] px-2 py-1 text-xl font-bold tracking-tight text-[color:var(--foreground)] outline-none ring-[color:var(--accent-secondary)]/40 focus:ring-2 md:text-2xl"
+              />
+            ) : (
+              <button
+                type="button"
+                disabled={interactDisabled}
+                title={
+                  interactDisabled
+                    ? undefined
+                    : "Click to edit matrix title"
+                }
+                className="text-left text-xl font-bold tracking-tight text-[color:var(--foreground)] disabled:cursor-default md:text-2xl [&:not(:disabled)]:rounded-md [&:not(:disabled)]:hover:bg-[color:var(--surface-elevated)] [&:not(:disabled)]:hover:underline"
+                onClick={() => {
+                  if (interactDisabled) return;
+                  setMatrixTitleDraft(state.matrix.title?.trim() ?? "");
+                  setMatrixTitleEditing(true);
+                }}
+              >
+                {state.matrix.title?.trim() || "Importance × Ease"}
+              </button>
+            )}
           </h1>
           <p className="mt-1 text-sm text-[color:var(--muted)]">
             {readOnly
