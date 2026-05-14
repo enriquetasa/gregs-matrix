@@ -85,5 +85,5 @@ There is no built-in “forgot password” for a matrix; if you lose the passwor
 ## Layout
 
 - **Horizontal axis:** Important (left) → Not important (right).  
-- **Vertical axis:** Easy (top) → Hard (bottom).  
-- **Quadrants:** Do now · Make easy, then do · Do when passing by · Ignore.
+- **Vertical axis:** Hard (top) → Easy (bottom).  
+- **Quadrants (Q1–Q4 clockwise from top-left):** Q1 Make easy, then do · Q2 Ignore · Q3 Do now · Q4 Do when passing by.
