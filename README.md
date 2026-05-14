@@ -40,7 +40,23 @@ Open [http://localhost:3000](http://localhost:3000), create a matrix, then use `
 
 4. On first deploy, the Docker image runs `node scripts/migrate-deploy.cjs` (migrations) then `npm run start`. `migrate-deploy` prefers `DATABASE_MIGRATE_URL` so the app user does not need `CREATE` on schema `public` (PostgreSQL 15+). If you use a buildpack without this Dockerfile, run `npm run db:migrate` (with the same env vars) in a **Job** or release phase before traffic hits the app.
 
-5. **Grant the app user access to Prisma tables.** Migrations run as `doadmin`, so `Matrix` and `Topic` are owned by that role. Your **app** user (in `DATABASE_URL`) must receive DML rights. In the DO database **Query** tab, connect as **`doadmin`** and run (replace `your_app_user` with the username from your app connection string—use double quotes if the name is mixed case):
+5. **Grant the app user access to Prisma tables.** Migrations run as `doadmin`, so `Matrix` and `Topic` are owned by that role. Your **app** user (in `DATABASE_URL`) must receive DML rights.
+
+   - **Option A — DigitalOcean UI:** Some clusters expose a **Query** / **SQL** / **Console** entry under the database in the control panel. Connect as **`doadmin`** and run the SQL below (replace `your_app_user` with the username from your app connection string; use double quotes if the name is mixed case).
+
+   - **Option B — From your laptop (no DO SQL UI):** Copy the **`doadmin`** URI into `DATABASE_MIGRATE_URL`, edit [`scripts/grant-app-user.sql`](scripts/grant-app-user.sql) and replace `app_user_placeholder` with that same app username, then run:
+
+     ```bash
+     npx prisma db execute --file scripts/grant-app-user.sql --url "$DATABASE_MIGRATE_URL"
+     ```
+
+     This uses Prisma’s CLI only (no `psql` install required). If you prefer `psql`, the same file works with:
+
+     ```bash
+     psql "$DATABASE_MIGRATE_URL" -v ON_ERROR_STOP=1 -f scripts/grant-app-user.sql
+     ```
+
+   SQL (same as in `scripts/grant-app-user.sql` after you substitute the user):
 
 ```sql
 GRANT USAGE ON SCHEMA public TO your_app_user;
