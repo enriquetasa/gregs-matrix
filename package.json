@@ -11,7 +11,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "postinstall": "prisma generate"
+    "postinstall": "node scripts/prisma-postinstall.cjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
