@@ -19,6 +19,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getMatrixExportImageOptions } from "@/lib/matrix-export-image";
+import { messageFromFailedResponse } from "@/lib/http-error-message";
 import { QUADRANT_LABELS } from "@/lib/quadrants";
 
 type TopicDto = {
@@ -284,7 +285,10 @@ export function MatrixApp({ slug }: { slug: string }) {
         return;
       }
       if (!res.ok) {
-        setState({ status: "error", message: "Could not load matrix." });
+        setState({
+          status: "error",
+          message: await messageFromFailedResponse(res),
+        });
         return;
       }
       const data: unknown = await res.json();
@@ -407,14 +411,7 @@ export function MatrixApp({ slug }: { slug: string }) {
         body: JSON.stringify({ password: passwordInput }),
       });
       if (!res.ok) {
-        const body: unknown = await res.json().catch(() => ({}));
-        const msg =
-          typeof body === "object" &&
-          body !== null &&
-          "error" in body &&
-          typeof (body as { error?: unknown }).error === "string"
-            ? (body as { error: string }).error
-            : "Unlock failed.";
+        const msg = await messageFromFailedResponse(res);
         setUnlockError(msg);
         return;
       }
@@ -463,7 +460,7 @@ export function MatrixApp({ slug }: { slug: string }) {
       });
       if (!res.ok) {
         setState((s) => (s.status === "ready" ? { ...s, topics: prevTopics } : s));
-        showToast("Could not move note.");
+        showToast(await messageFromFailedResponse(res));
         return;
       }
       await load();
@@ -514,7 +511,7 @@ export function MatrixApp({ slug }: { slug: string }) {
         body: JSON.stringify({ text, quadrant: addQuadrant }),
       });
       if (!res.ok) {
-        setAddError("Could not add topic.");
+        setAddError(await messageFromFailedResponse(res));
         return;
       }
       const dto = (await res.json()) as TopicDto;
@@ -598,7 +595,7 @@ export function MatrixApp({ slug }: { slug: string }) {
         body: JSON.stringify({ text: newText }),
       });
       if (!res.ok) {
-        showToast("Could not save note.");
+        showToast(await messageFromFailedResponse(res));
         return;
       }
       await load();
@@ -719,15 +716,7 @@ export function MatrixApp({ slug }: { slug: string }) {
         body: JSON.stringify(body),
       });
       if (!res.ok) {
-        const err: unknown = await res.json().catch(() => ({}));
-        const msg =
-          typeof err === "object" &&
-          err !== null &&
-          "error" in err &&
-          typeof (err as { error?: unknown }).error === "string"
-            ? (err as { error: string }).error
-            : "Update failed.";
-        setSettingsError(msg);
+        setSettingsError(await messageFromFailedResponse(res));
         return;
       }
       setSettingsOpen(false);

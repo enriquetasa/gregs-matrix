@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { messageFromFailedResponse } from "@/lib/http-error-message";
 
 export default function HomePage() {
   const router = useRouter();
@@ -25,7 +26,7 @@ export default function HomePage() {
         body: JSON.stringify(body),
       });
       if (!res.ok) {
-        setError("Could not create matrix.");
+        setError(await messageFromFailedResponse(res));
         return;
       }
       const data: unknown = await res.json();
