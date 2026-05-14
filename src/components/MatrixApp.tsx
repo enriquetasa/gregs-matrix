@@ -251,6 +251,9 @@ export function MatrixApp({ slug }: { slug: string }) {
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [inlineStatus, setInlineStatus] = useState<string | null>(null);
+  const copyLinkButtonRef = useRef<HTMLButtonElement>(null);
+  const [copyLinkLabel, setCopyLinkLabel] = useState("Copy link");
+  const [copyAnnounce, setCopyAnnounce] = useState<string | null>(null);
   const undoPastRef = useRef<HistoryFrame[]>([]);
   const undoFutureRef = useRef<HistoryFrame[]>([]);
   const [historyTick, setHistoryTick] = useState(0);
@@ -626,9 +629,18 @@ export function MatrixApp({ slug }: { slug: string }) {
   const copyShareLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
+      setCopyAnnounce("Link copied to clipboard.");
+      setCopyLinkLabel("Copied!");
       showToast("Link copied");
+      copyLinkButtonRef.current?.focus();
+      window.setTimeout(() => {
+        setCopyAnnounce(null);
+        setCopyLinkLabel("Copy link");
+      }, 2500);
     } catch {
+      setCopyAnnounce("Could not copy link to clipboard.");
       showToast("Copy failed");
+      window.setTimeout(() => setCopyAnnounce(null), 2500);
     }
   };
 
@@ -795,6 +807,9 @@ export function MatrixApp({ slug }: { slug: string }) {
 
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-6xl flex-col gap-4 px-4 py-4 md:gap-6 md:px-6 md:py-6">
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {copyAnnounce ?? ""}
+      </div>
       <header className="flex shrink-0 flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-[color:var(--foreground)] md:text-2xl">
@@ -834,11 +849,13 @@ export function MatrixApp({ slug }: { slug: string }) {
             Redo
           </button>
           <button
+            ref={copyLinkButtonRef}
             type="button"
             className="rounded-full border-2 border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-sm font-medium text-[color:var(--foreground)] shadow-sm hover:bg-[color:var(--surface-elevated)]"
             onClick={() => void copyShareLink()}
+            aria-label={copyLinkLabel === "Copied!" ? "Copied" : "Copy share link"}
           >
-            Copy link
+            {copyLinkLabel}
           </button>
           <button
             type="button"
