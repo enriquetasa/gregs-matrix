@@ -93,7 +93,7 @@ function DraggableTopic({
         <button
           type="button"
           aria-label="Remove topic"
-          className="absolute right-1 top-1 rounded px-1 text-xs text-[color:var(--muted)] opacity-0 transition hover:bg-[color:var(--surface-elevated)] hover:text-[color:var(--foreground)] group-hover:opacity-100"
+          className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] text-sm font-bold text-[color:var(--foreground)] shadow-sm hover:bg-[color:var(--danger)]/15 hover:text-[color:var(--danger)]"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
