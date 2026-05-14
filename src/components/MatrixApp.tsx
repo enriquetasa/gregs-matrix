@@ -112,13 +112,13 @@ function DroppableQuadrant({
   label,
   disabled,
   children,
-  onBackgroundDoubleClick,
+  onQuadrantClick,
 }: {
   id: Quadrant;
   label: string;
   disabled: boolean;
   children: ReactNode;
-  onBackgroundDoubleClick: (q: Quadrant) => void;
+  onQuadrantClick: (q: Quadrant) => void;
 }) {
   const { isOver, setNodeRef } = useDroppable({ id });
   return (
@@ -128,10 +128,10 @@ function DroppableQuadrant({
       className={`relative flex h-full min-h-0 flex-col gap-2 border-2 p-3 transition-shadow ${quadrantSurface[id]} ${
         isOver ? "ring-2 ring-[color:color-mix(in_srgb,var(--coral-soho-lights)_55%,transparent)]" : ""
       }`}
-      onDoubleClick={(e) => {
+      onClick={(e) => {
         if (disabled) return;
         if ((e.target as HTMLElement).closest("[data-topic]")) return;
-        onBackgroundDoubleClick(id);
+        onQuadrantClick(id);
       }}
     >
       <div className="pointer-events-none select-none text-xs font-semibold uppercase tracking-wide text-[color:var(--accent-strong)]">
@@ -505,7 +505,7 @@ export function MatrixApp({ slug }: { slug: string }) {
             {state.matrix.title?.trim() || "Importance × Ease"}
           </h1>
           <p className="mt-1 text-sm text-[color:var(--muted)]">
-            Double-click a quadrant to add a note.
+            Tap a quadrant to add a note.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -579,7 +579,7 @@ export function MatrixApp({ slug }: { slug: string }) {
               id="MAKE_EASY_THEN_DO"
               label={QUADRANT_LABELS.MAKE_EASY_THEN_DO}
               disabled={disabled}
-              onBackgroundDoubleClick={(q) => {
+              onQuadrantClick={(q) => {
                 setAddQuadrant(q);
                 setAddText("");
                 setAddError(null);
@@ -599,7 +599,7 @@ export function MatrixApp({ slug }: { slug: string }) {
               id="IGNORE"
               label={QUADRANT_LABELS.IGNORE}
               disabled={disabled}
-              onBackgroundDoubleClick={(q) => {
+              onQuadrantClick={(q) => {
                 setAddQuadrant(q);
                 setAddText("");
                 setAddError(null);
@@ -623,7 +623,7 @@ export function MatrixApp({ slug }: { slug: string }) {
               id="DO_NOW"
               label={QUADRANT_LABELS.DO_NOW}
               disabled={disabled}
-              onBackgroundDoubleClick={(q) => {
+              onQuadrantClick={(q) => {
                 setAddQuadrant(q);
                 setAddText("");
                 setAddError(null);
@@ -643,7 +643,7 @@ export function MatrixApp({ slug }: { slug: string }) {
               id="DO_WHEN_PASSING"
               label={QUADRANT_LABELS.DO_WHEN_PASSING}
               disabled={disabled}
-              onBackgroundDoubleClick={(q) => {
+              onQuadrantClick={(q) => {
                 setAddQuadrant(q);
                 setAddText("");
                 setAddError(null);
