@@ -47,33 +47,42 @@ export default function HomePage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[70vh] max-w-lg flex-col justify-center gap-6 px-4 py-12">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">
-          Ease × Importance matrix
+    <div className="mx-auto flex min-h-[70vh] max-w-lg flex-col justify-center gap-8 px-4 py-12">
+      <div className="text-center md:text-left">
+        <p className="text-sm font-semibold uppercase tracking-wider text-[color:var(--accent-strong)]">
+          Wall-ready priorities
+        </p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-[color:var(--foreground)] md:text-4xl">
+          Importance × Ease matrix
         </h1>
-        <p className="mt-2 text-sm leading-relaxed text-stone-600">
-          Create a wall-friendly board with four quadrants. Optional password;
-          share the link with your team. Double-click a quadrant to add notes and
-          drag them between areas.
+        <p className="mt-3 text-sm leading-relaxed text-[color:var(--muted)]">
+          Spin up a four-quadrant board in seconds. Optional password, share the
+          link, double-click to add notes, drag between quadrants.
         </p>
       </div>
-      <form className="flex flex-col gap-4 rounded-lg border border-stone-200 bg-white p-6 shadow-sm" onSubmit={(e) => void onSubmit(e)}>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-stone-800">Title (optional)</span>
+      <form
+        className="flex flex-col gap-5 rounded-2xl border-2 border-[color:var(--border)] bg-[color:var(--surface)] p-8 shadow-[0_12px_40px_rgba(24,0,72,0.08)]"
+        onSubmit={(e) => void onSubmit(e)}
+      >
+        <label className="flex flex-col gap-2 text-sm">
+          <span className="font-semibold text-[color:var(--foreground)]">
+            Title (optional)
+          </span>
           <input
-            className="rounded-md border border-stone-300 px-3 py-2 text-stone-900"
+            className="rounded-xl border-2 border-[color:var(--border)] bg-[color:var(--surface-elevated)] px-3 py-2.5 text-[color:var(--foreground)] outline-none ring-[color:var(--accent-secondary)]/40 focus:ring-2"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={200}
             placeholder="e.g. Q2 priorities"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-stone-800">Password (optional)</span>
+        <label className="flex flex-col gap-2 text-sm">
+          <span className="font-semibold text-[color:var(--foreground)]">
+            Password (optional)
+          </span>
           <input
             type="password"
-            className="rounded-md border border-stone-300 px-3 py-2 text-stone-900"
+            className="rounded-xl border-2 border-[color:var(--border)] bg-[color:var(--surface-elevated)] px-3 py-2.5 text-[color:var(--foreground)] outline-none ring-[color:var(--accent-secondary)]/40 focus:ring-2"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             minLength={password ? 4 : 0}
@@ -81,19 +90,19 @@ export default function HomePage() {
           />
         </label>
         {error && (
-          <p className="text-sm text-red-700" role="alert">
+          <p className="text-sm text-[color:var(--danger)]" role="alert">
             {error}
           </p>
         )}
         <button
           type="submit"
           disabled={busy}
-          className="rounded-md bg-stone-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-stone-800 disabled:opacity-50"
+          className="rounded-full bg-[color:var(--accent-strong)] px-4 py-3 text-sm font-semibold text-white shadow-lg hover:opacity-90 disabled:opacity-50"
         >
           Create matrix
         </button>
       </form>
-      <p className="text-center text-xs text-stone-500">
+      <p className="text-center text-xs text-[color:var(--muted)]">
         Host on your own infrastructure; see README for DigitalOcean.
       </p>
     </div>

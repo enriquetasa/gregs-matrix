@@ -1,6 +1,6 @@
 # gregs-matrix
 
-Ease × Importance matrix for office displays: a 2×2 board with optional per-matrix password, drag-and-drop notes, PNG/PDF export, and PostgreSQL persistence.
+Importance × Ease matrix for office displays: a 2×2 board with optional per-matrix password, drag-and-drop notes, PNG/PDF export, and PostgreSQL persistence.
 
 ## Local development
 
@@ -84,6 +84,6 @@ There is no built-in “forgot password” for a matrix; if you lose the passwor
 
 ## Layout
 
-- **Horizontal axis:** Easy (left) → Hard (right).  
-- **Vertical axis:** Not important (bottom) → Important (top).  
+- **Horizontal axis:** Not important (left) → Important (right).  
+- **Vertical axis:** Easy (top) → Hard (bottom).  
 - **Quadrants:** Do now · Make easy, then do · Do when passing by · Ignore.

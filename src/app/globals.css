@@ -1,8 +1,49 @@
 @import "tailwindcss";
 
+/*
+ * Coral-inspired palette (Octopus Energy public design tokens).
+ * See https://coral.octopus.energy/docs/tokens — names map to documented colours.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Coral token references */
+  --coral-ice: #f0ffff;
+  --coral-hemocyanin: #180048;
+  --coral-siphon: #100030;
+  --coral-bubblegum: #ff2ffb;
+  --coral-soho-lights: #f050f8;
+  --coral-ink: #5840ff;
+  --coral-voltage: #60f0f8;
+  --coral-green: #10c395;
+  --coral-red: #ff3e68;
+  --coral-orange: #ec8243;
+  --coral-blue: #00c8f8;
+
+  /* Semantic */
+  --page-bg: #edf8fc;
+  --export-bg: #edf8fc;
+  --surface: #ffffff;
+  --surface-elevated: color-mix(in srgb, var(--coral-ice) 55%, white);
+  --foreground: var(--coral-hemocyanin);
+  --muted: color-mix(in srgb, var(--coral-hemocyanin) 55%, white);
+  --border: color-mix(in srgb, var(--coral-ink) 22%, white);
+  --accent: var(--coral-bubblegum);
+  --accent-strong: var(--coral-ink);
+  --accent-secondary: var(--coral-voltage);
+  --success: var(--coral-green);
+  --danger: var(--coral-red);
+  --warning: var(--coral-orange);
+
+  /* Quadrant fills (muted Coral mixes, wall-readable) */
+  --quad-do-now-bg: color-mix(in srgb, var(--coral-green) 18%, white);
+  --quad-do-now-border: color-mix(in srgb, var(--coral-green) 42%, white);
+  --quad-make-easy-bg: color-mix(in srgb, var(--coral-ink) 14%, white);
+  --quad-make-easy-border: color-mix(in srgb, var(--coral-ink) 35%, white);
+  --quad-passing-bg: color-mix(in srgb, var(--coral-voltage) 22%, white);
+  --quad-passing-border: color-mix(in srgb, var(--coral-blue) 30%, white);
+  --quad-ignore-bg: color-mix(in srgb, var(--coral-ice) 70%, var(--coral-ink) 10%);
+  --quad-ignore-border: color-mix(in srgb, var(--coral-ink) 18%, white);
+
+  --background: var(--page-bg);
 }
 
 @theme inline {
@@ -12,15 +53,8 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
+  background: var(--page-bg);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }

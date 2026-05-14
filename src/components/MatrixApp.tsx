@@ -16,7 +16,7 @@ import { jsPDF } from "jspdf";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { matrixExportHtml2CanvasOptions } from "@/lib/matrix-export-html2canvas";
+import { getMatrixExportHtml2CanvasOptions } from "@/lib/matrix-export-html2canvas";
 import { QUADRANT_LABELS } from "@/lib/quadrants";
 
 type TopicDto = {
@@ -45,15 +45,20 @@ type LoadState =
     };
 
 const quadrantSurface: Record<Quadrant, string> = {
-  DO_NOW: "bg-emerald-50/90 border-emerald-100",
-  MAKE_EASY_THEN_DO: "bg-amber-50/90 border-amber-100",
-  DO_WHEN_PASSING: "bg-slate-50/90 border-slate-200",
-  IGNORE: "bg-stone-100/90 border-stone-200",
+  DO_NOW:
+    "bg-[color:var(--quad-do-now-bg)] border-[color:var(--quad-do-now-border)]",
+  MAKE_EASY_THEN_DO:
+    "bg-[color:var(--quad-make-easy-bg)] border-[color:var(--quad-make-easy-border)]",
+  DO_WHEN_PASSING:
+    "bg-[color:var(--quad-passing-bg)] border-[color:var(--quad-passing-border)]",
+  IGNORE:
+    "bg-[color:var(--quad-ignore-bg)] border-[color:var(--quad-ignore-border)]",
 };
 
+/** Rows top→bottom: Easy, Hard. Columns left→right: Not important, Important. */
 const gridQuadrants: Quadrant[][] = [
-  ["DO_NOW", "MAKE_EASY_THEN_DO"],
-  ["DO_WHEN_PASSING", "IGNORE"],
+  ["DO_WHEN_PASSING", "DO_NOW"],
+  ["IGNORE", "MAKE_EASY_THEN_DO"],
 ];
 
 function DraggableTopic({
@@ -81,14 +86,14 @@ function DraggableTopic({
       {...listeners}
       {...attributes}
       data-topic
-      className="group relative cursor-grab touch-none rounded-md border border-stone-200/80 bg-[#fffef7] px-3 py-2 text-sm text-stone-800 shadow-sm active:cursor-grabbing"
+      className="group relative cursor-grab touch-none rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 text-sm text-[color:var(--foreground)] shadow-md active:cursor-grabbing md:shadow-lg md:[transform:rotate(0.5deg)]"
     >
       <p className="pr-6 leading-snug">{topic.text}</p>
       {!disabled && (
         <button
           type="button"
           aria-label="Remove topic"
-          className="absolute right-1 top-1 rounded px-1 text-xs text-stone-400 opacity-0 transition hover:bg-stone-100 hover:text-stone-700 group-hover:opacity-100"
+          className="absolute right-1 top-1 rounded px-1 text-xs text-[color:var(--muted)] opacity-0 transition hover:bg-[color:var(--surface-elevated)] hover:text-[color:var(--foreground)] group-hover:opacity-100"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
@@ -120,8 +125,8 @@ function DroppableQuadrant({
     <div
       ref={setNodeRef}
       data-quadrant={id}
-      className={`relative flex min-h-[140px] flex-col gap-2 border p-3 transition-colors md:min-h-[180px] ${quadrantSurface[id]} ${
-        isOver ? "ring-2 ring-stone-400/50" : ""
+      className={`relative flex min-h-[140px] flex-col gap-2 border-2 p-3 transition-shadow md:min-h-[180px] ${quadrantSurface[id]} ${
+        isOver ? "ring-2 ring-[color:color-mix(in_srgb,var(--coral-soho-lights)_55%,transparent)]" : ""
       }`}
       onDoubleClick={(e) => {
         if (disabled) return;
@@ -129,7 +134,7 @@ function DroppableQuadrant({
         onBackgroundDoubleClick(id);
       }}
     >
-      <div className="pointer-events-none select-none text-xs font-semibold uppercase tracking-wide text-stone-600">
+      <div className="pointer-events-none select-none text-xs font-semibold uppercase tracking-wide text-[color:var(--accent-strong)]">
         {label}
       </div>
       <div className="flex flex-1 flex-col gap-2">{children}</div>
@@ -335,7 +340,7 @@ export function MatrixApp({ slug }: { slug: string }) {
     if (!node) return;
     setBusy(true);
     try {
-      const canvas = await html2canvas(node, matrixExportHtml2CanvasOptions);
+      const canvas = await html2canvas(node, getMatrixExportHtml2CanvasOptions());
       const url = canvas.toDataURL("image/png");
       const a = document.createElement("a");
       a.href = url;
@@ -359,7 +364,7 @@ export function MatrixApp({ slug }: { slug: string }) {
     if (!node) return;
     setBusy(true);
     try {
-      const canvas = await html2canvas(node, matrixExportHtml2CanvasOptions);
+      const canvas = await html2canvas(node, getMatrixExportHtml2CanvasOptions());
       const img = canvas.toDataURL("image/png");
       const pdf = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
       const pageW = pdf.internal.pageSize.getWidth();
@@ -429,7 +434,7 @@ export function MatrixApp({ slug }: { slug: string }) {
 
   if (state.status === "loading") {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-stone-600">
+      <div className="flex min-h-[50vh] items-center justify-center text-[color:var(--muted)]">
         Loading…
       </div>
     );
@@ -437,9 +442,12 @@ export function MatrixApp({ slug }: { slug: string }) {
 
   if (state.status === "error") {
     return (
-      <div className="mx-auto max-w-md p-8 text-center text-stone-700">
+      <div className="mx-auto max-w-md p-8 text-center text-[color:var(--foreground)]">
         <p className="mb-4">{state.message}</p>
-        <Link className="text-emerald-700 underline" href="/">
+        <Link
+          className="font-medium text-[color:var(--accent-strong)] underline decoration-2 underline-offset-2 hover:text-[color:var(--accent)]"
+          href="/"
+        >
           Back home
         </Link>
       </div>
@@ -448,34 +456,37 @@ export function MatrixApp({ slug }: { slug: string }) {
 
   if (!state.authorized && state.hasPassword) {
     return (
-      <div className="mx-auto flex max-w-md flex-col gap-4 p-8">
-        <h1 className="text-xl font-semibold text-stone-900">Enter password</h1>
-        <p className="text-sm text-stone-600">
+      <div className="mx-auto flex max-w-md flex-col gap-5 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-8 shadow-lg">
+        <h1 className="text-xl font-bold text-[color:var(--foreground)]">Enter password</h1>
+        <p className="text-sm leading-relaxed text-[color:var(--muted)]">
           This matrix is protected. Ask the owner for the password.
         </p>
         <form className="flex flex-col gap-3" onSubmit={onUnlock}>
           <input
             type="password"
             autoComplete="current-password"
-            className="rounded-md border border-stone-300 px-3 py-2 text-stone-900"
+            className="rounded-xl border-2 border-[color:var(--border)] bg-[color:var(--surface-elevated)] px-3 py-2.5 text-[color:var(--foreground)] outline-none ring-[color:var(--accent-secondary)]/40 focus:ring-2"
             value={passwordInput}
             onChange={(e) => setPasswordInput(e.target.value)}
             placeholder="Password"
           />
           {unlockError && (
-            <p className="text-sm text-red-700" role="alert">
+            <p className="text-sm text-[color:var(--danger)]" role="alert">
               {unlockError}
             </p>
           )}
           <button
             type="submit"
             disabled={busy}
-            className="rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="rounded-full bg-[color:var(--accent-strong)] px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:opacity-90 disabled:opacity-50"
           >
             Unlock
           </button>
         </form>
-        <Link className="text-sm text-emerald-800 underline" href="/">
+        <Link
+          className="text-center text-sm font-medium text-[color:var(--accent-strong)] underline decoration-2 underline-offset-2"
+          href="/"
+        >
           Create a new matrix
         </Link>
       </div>
@@ -485,25 +496,27 @@ export function MatrixApp({ slug }: { slug: string }) {
   const disabled = !state.authorized || busy;
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6 md:px-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 md:px-6">
+      <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-lg font-semibold text-stone-900 md:text-xl">
-            {state.matrix.title?.trim() || "Ease × Importance"}
+          <h1 className="text-xl font-bold tracking-tight text-[color:var(--foreground)] md:text-2xl">
+            {state.matrix.title?.trim() || "Importance × Ease"}
           </h1>
-          <p className="text-xs text-stone-500">Double-click a quadrant to add a note.</p>
+          <p className="mt-1 text-sm text-[color:var(--muted)]">
+            Double-click a quadrant to add a note.
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            className="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 hover:bg-stone-50"
+            className="rounded-full border-2 border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-sm font-medium text-[color:var(--foreground)] shadow-sm hover:bg-[color:var(--surface-elevated)]"
             onClick={() => void copyShareLink()}
           >
             Copy link
           </button>
           <button
             type="button"
-            className="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 hover:bg-stone-50"
+            className="rounded-full border-2 border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-sm font-medium text-[color:var(--foreground)] shadow-sm hover:bg-[color:var(--surface-elevated)] disabled:opacity-50"
             onClick={() => void exportImage()}
             disabled={busy}
           >
@@ -511,7 +524,7 @@ export function MatrixApp({ slug }: { slug: string }) {
           </button>
           <button
             type="button"
-            className="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 hover:bg-stone-50"
+            className="rounded-full border-2 border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-sm font-medium text-[color:var(--foreground)] shadow-sm hover:bg-[color:var(--surface-elevated)] disabled:opacity-50"
             onClick={() => void exportPdf()}
             disabled={busy}
           >
@@ -519,7 +532,7 @@ export function MatrixApp({ slug }: { slug: string }) {
           </button>
           <button
             type="button"
-            className="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 hover:bg-stone-50"
+            className="rounded-full border-2 border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-sm font-medium text-[color:var(--foreground)] shadow-sm hover:bg-[color:var(--surface-elevated)]"
             onClick={() => {
               setSettingsError(null);
               setSettingsOpen(true);
@@ -528,7 +541,7 @@ export function MatrixApp({ slug }: { slug: string }) {
             Matrix password…
           </button>
           <Link
-            className="rounded-md px-3 py-1.5 text-sm text-stone-600 underline"
+            className="rounded-full px-4 py-2 text-sm font-medium text-[color:var(--accent-strong)] underline decoration-2 underline-offset-2 hover:text-[color:var(--accent)]"
             href="/"
           >
             New matrix
@@ -537,7 +550,7 @@ export function MatrixApp({ slug }: { slug: string }) {
       </header>
 
       {toast && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-md bg-stone-900 px-4 py-2 text-sm text-white shadow">
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[color:var(--foreground)] px-5 py-2.5 text-sm font-medium text-[color:var(--coral-ice)] shadow-lg">
           {toast}
         </div>
       )}
@@ -545,20 +558,40 @@ export function MatrixApp({ slug }: { slug: string }) {
       <DndContext sensors={sensors} onDragEnd={(e) => void onDragEnd(e)}>
         <div
           id="matrix-export-root"
-          className="rounded-lg border border-stone-200 bg-stone-50/80 p-4 shadow-sm"
+          className="rounded-2xl border-2 border-[color:var(--border)] bg-[color:var(--surface-elevated)] p-5 shadow-[0_12px_40px_rgba(24,0,72,0.1)]"
         >
           <div className="relative grid grid-cols-[auto_1fr_1fr] grid-rows-[auto_1fr_1fr_auto] gap-1 md:gap-2">
             <div />
-            <div className="pb-1 text-center text-xs font-medium text-stone-500">
-              Easy
+            <div className="pb-1 text-center text-xs font-semibold text-[color:var(--muted)]">
+              Not important
             </div>
-            <div className="pb-1 text-center text-xs font-medium text-stone-500">
-              Hard
-            </div>
-
-            <div className="flex items-center justify-end pr-2 text-xs font-medium text-stone-500 [writing-mode:vertical-rl] rotate-180">
+            <div className="pb-1 text-center text-xs font-semibold text-[color:var(--muted)]">
               Important
             </div>
+
+            <div className="flex items-center justify-end pr-2 text-xs font-semibold text-[color:var(--muted)] [writing-mode:vertical-rl] rotate-180">
+              Easy
+            </div>
+            <DroppableQuadrant
+              id="DO_WHEN_PASSING"
+              label={QUADRANT_LABELS.DO_WHEN_PASSING}
+              disabled={disabled}
+              onBackgroundDoubleClick={(q) => {
+                setAddQuadrant(q);
+                setAddText("");
+                setAddError(null);
+                setAddOpen(true);
+              }}
+            >
+              {(topicsByQuadrant.get("DO_WHEN_PASSING") ?? []).map((t) => (
+                <DraggableTopic
+                  key={t.id}
+                  topic={t}
+                  disabled={disabled}
+                  onDelete={(id) => void deleteTopic(id)}
+                />
+              ))}
+            </DroppableQuadrant>
             <DroppableQuadrant
               id="DO_NOW"
               label={QUADRANT_LABELS.DO_NOW}
@@ -571,6 +604,30 @@ export function MatrixApp({ slug }: { slug: string }) {
               }}
             >
               {(topicsByQuadrant.get("DO_NOW") ?? []).map((t) => (
+                <DraggableTopic
+                  key={t.id}
+                  topic={t}
+                  disabled={disabled}
+                  onDelete={(id) => void deleteTopic(id)}
+                />
+              ))}
+            </DroppableQuadrant>
+
+            <div className="flex items-center justify-end pr-2 text-xs font-semibold text-[color:var(--muted)] [writing-mode:vertical-rl] rotate-180">
+              Hard
+            </div>
+            <DroppableQuadrant
+              id="IGNORE"
+              label={QUADRANT_LABELS.IGNORE}
+              disabled={disabled}
+              onBackgroundDoubleClick={(q) => {
+                setAddQuadrant(q);
+                setAddText("");
+                setAddError(null);
+                setAddOpen(true);
+              }}
+            >
+              {(topicsByQuadrant.get("IGNORE") ?? []).map((t) => (
                 <DraggableTopic
                   key={t.id}
                   topic={t}
@@ -600,53 +657,9 @@ export function MatrixApp({ slug }: { slug: string }) {
               ))}
             </DroppableQuadrant>
 
-            <div className="flex items-center justify-end pr-2 text-xs font-medium text-stone-500 [writing-mode:vertical-rl] rotate-180">
-              Not important
-            </div>
-            <DroppableQuadrant
-              id="DO_WHEN_PASSING"
-              label={QUADRANT_LABELS.DO_WHEN_PASSING}
-              disabled={disabled}
-              onBackgroundDoubleClick={(q) => {
-                setAddQuadrant(q);
-                setAddText("");
-                setAddError(null);
-                setAddOpen(true);
-              }}
-            >
-              {(topicsByQuadrant.get("DO_WHEN_PASSING") ?? []).map((t) => (
-                <DraggableTopic
-                  key={t.id}
-                  topic={t}
-                  disabled={disabled}
-                  onDelete={(id) => void deleteTopic(id)}
-                />
-              ))}
-            </DroppableQuadrant>
-            <DroppableQuadrant
-              id="IGNORE"
-              label={QUADRANT_LABELS.IGNORE}
-              disabled={disabled}
-              onBackgroundDoubleClick={(q) => {
-                setAddQuadrant(q);
-                setAddText("");
-                setAddError(null);
-                setAddOpen(true);
-              }}
-            >
-              {(topicsByQuadrant.get("IGNORE") ?? []).map((t) => (
-                <DraggableTopic
-                  key={t.id}
-                  topic={t}
-                  disabled={disabled}
-                  onDelete={(id) => void deleteTopic(id)}
-                />
-              ))}
-            </DroppableQuadrant>
-
             <div />
-            <div className="col-span-2 pt-1 text-center text-xs text-stone-500">
-              Ease increases left → right · Importance increases bottom → top
+            <div className="col-span-2 pt-2 text-center text-xs text-[color:var(--muted)]">
+              Importance increases left → right · Ease increases top → bottom
             </div>
           </div>
         </div>
@@ -654,19 +667,19 @@ export function MatrixApp({ slug }: { slug: string }) {
 
       {addOpen && addQuadrant && (
         <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4"
+          className="fixed inset-0 z-40 flex items-center justify-center bg-[color:color-mix(in_srgb,var(--coral-siphon)_55%,transparent)] p-4 backdrop-blur-[2px]"
           role="dialog"
           aria-modal
         >
           <form
-            className="w-full max-w-md rounded-lg bg-white p-5 shadow-lg"
+            className="w-full max-w-md rounded-2xl border-2 border-[color:var(--border)] bg-[color:var(--surface)] p-6 shadow-2xl"
             onSubmit={(e) => void submitAdd(e)}
           >
-            <h2 className="mb-2 text-base font-semibold text-stone-900">
+            <h2 className="mb-2 text-lg font-bold text-[color:var(--foreground)]">
               New note — {QUADRANT_LABELS[addQuadrant]}
             </h2>
             <textarea
-              className="mb-3 w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-900"
+              className="mb-3 w-full rounded-xl border-2 border-[color:var(--border)] bg-[color:var(--surface-elevated)] px-3 py-2 text-sm text-[color:var(--foreground)] outline-none ring-[color:var(--accent-secondary)]/40 focus:ring-2"
               rows={3}
               maxLength={120}
               value={addText}
@@ -675,14 +688,14 @@ export function MatrixApp({ slug }: { slug: string }) {
               autoFocus
             />
             {addError && (
-              <p className="mb-2 text-sm text-red-700" role="alert">
+              <p className="mb-2 text-sm text-[color:var(--danger)]" role="alert">
                 {addError}
               </p>
             )}
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                className="rounded-md px-3 py-1.5 text-sm text-stone-700 hover:bg-stone-100"
+                className="rounded-full px-4 py-2 text-sm font-medium text-[color:var(--muted)] hover:bg-[color:var(--surface-elevated)]"
                 onClick={() => {
                   setAddOpen(false);
                   setAddQuadrant(null);
@@ -693,7 +706,7 @@ export function MatrixApp({ slug }: { slug: string }) {
               <button
                 type="submit"
                 disabled={busy}
-                className="rounded-md bg-stone-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+                className="rounded-full bg-[color:var(--accent-strong)] px-4 py-2 text-sm font-semibold text-white shadow-md hover:opacity-90 disabled:opacity-50"
               >
                 Add
               </button>
@@ -704,18 +717,18 @@ export function MatrixApp({ slug }: { slug: string }) {
 
       {settingsOpen && (
         <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4"
+          className="fixed inset-0 z-40 flex items-center justify-center bg-[color:color-mix(in_srgb,var(--coral-siphon)_55%,transparent)] p-4 backdrop-blur-[2px]"
           role="dialog"
           aria-modal
         >
           <form
-            className="w-full max-w-md rounded-lg bg-white p-5 shadow-lg"
+            className="w-full max-w-md rounded-2xl border-2 border-[color:var(--border)] bg-[color:var(--surface)] p-6 shadow-2xl"
             onSubmit={(e) => void submitSettings(e)}
           >
-            <h2 className="mb-2 text-base font-semibold text-stone-900">
+            <h2 className="mb-2 text-lg font-bold text-[color:var(--foreground)]">
               Matrix password
             </h2>
-            <p className="mb-3 text-sm text-stone-600">
+            <p className="mb-3 text-sm leading-relaxed text-[color:var(--muted)]">
               {state.hasPassword
                 ? "Enter your current password, then a new password (min 4 characters)."
                 : "Set a password visitors must enter (min 4 characters)."}
@@ -723,7 +736,7 @@ export function MatrixApp({ slug }: { slug: string }) {
             {state.hasPassword && (
               <input
                 type="password"
-                className="mb-2 w-full rounded-md border border-stone-300 px-3 py-2 text-sm"
+                className="mb-2 w-full rounded-xl border-2 border-[color:var(--border)] bg-[color:var(--surface-elevated)] px-3 py-2 text-sm text-[color:var(--foreground)] outline-none ring-[color:var(--accent-secondary)]/40 focus:ring-2"
                 placeholder="Current password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
@@ -731,20 +744,20 @@ export function MatrixApp({ slug }: { slug: string }) {
             )}
             <input
               type="password"
-              className="mb-3 w-full rounded-md border border-stone-300 px-3 py-2 text-sm"
+              className="mb-3 w-full rounded-xl border-2 border-[color:var(--border)] bg-[color:var(--surface-elevated)] px-3 py-2 text-sm text-[color:var(--foreground)] outline-none ring-[color:var(--accent-secondary)]/40 focus:ring-2"
               placeholder="New password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
             />
             {settingsError && (
-              <p className="mb-2 text-sm text-red-700" role="alert">
+              <p className="mb-2 text-sm text-[color:var(--danger)]" role="alert">
                 {settingsError}
               </p>
             )}
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                className="rounded-md px-3 py-1.5 text-sm text-stone-700 hover:bg-stone-100"
+                className="rounded-full px-4 py-2 text-sm font-medium text-[color:var(--muted)] hover:bg-[color:var(--surface-elevated)]"
                 onClick={() => setSettingsOpen(false)}
               >
                 Close
@@ -752,7 +765,7 @@ export function MatrixApp({ slug }: { slug: string }) {
               <button
                 type="submit"
                 disabled={busy}
-                className="rounded-md bg-stone-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+                className="rounded-full bg-[color:var(--accent-strong)] px-4 py-2 text-sm font-semibold text-white shadow-md hover:opacity-90 disabled:opacity-50"
               >
                 Save
               </button>

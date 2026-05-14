@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ease × Importance matrix",
+  title: "Importance × Ease matrix",
   description:
-    "Office-friendly 2×2 matrix for ease and importance. Optional password, export to PNG or PDF.",
+    "Office-friendly 2×2 matrix for importance and ease. Optional password, export to PNG or PDF.",
 };
 
 export default function RootLayout({
@@ -26,7 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} min-h-screen font-sans antialiased`}
       >
         {children}
       </body>
