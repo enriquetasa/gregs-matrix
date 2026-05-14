@@ -125,7 +125,7 @@ function DroppableQuadrant({
     <div
       ref={setNodeRef}
       data-quadrant={id}
-      className={`relative flex min-h-[140px] flex-col gap-2 border-2 p-3 transition-shadow md:min-h-[180px] ${quadrantSurface[id]} ${
+      className={`relative flex h-full min-h-0 flex-col gap-2 border-2 p-3 transition-shadow ${quadrantSurface[id]} ${
         isOver ? "ring-2 ring-[color:color-mix(in_srgb,var(--coral-soho-lights)_55%,transparent)]" : ""
       }`}
       onDoubleClick={(e) => {
@@ -137,7 +137,7 @@ function DroppableQuadrant({
       <div className="pointer-events-none select-none text-xs font-semibold uppercase tracking-wide text-[color:var(--accent-strong)]">
         {label}
       </div>
-      <div className="flex flex-1 flex-col gap-2">{children}</div>
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">{children}</div>
     </div>
   );
 }
@@ -498,8 +498,8 @@ export function MatrixApp({ slug }: { slug: string }) {
   const disabled = !state.authorized || busy;
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 md:px-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
+    <div className="mx-auto flex min-h-svh w-full max-w-6xl flex-col gap-4 px-4 py-4 md:gap-6 md:px-6 md:py-6">
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-[color:var(--foreground)] md:text-2xl">
             {state.matrix.title?.trim() || "Importance × Ease"}
@@ -557,12 +557,13 @@ export function MatrixApp({ slug }: { slug: string }) {
         </div>
       )}
 
-      <DndContext sensors={sensors} onDragEnd={(e) => void onDragEnd(e)}>
-        <div
-          id="matrix-export-root"
-          className="rounded-2xl border-2 border-[color:var(--border)] bg-[color:var(--surface-elevated)] p-5 shadow-[0_12px_40px_rgba(24,0,72,0.1)]"
-        >
-          <div className="relative grid grid-cols-[auto_1fr_1fr] grid-rows-[auto_1fr_1fr_auto] gap-1 md:gap-2">
+      <div className="flex min-h-0 w-full flex-1 flex-col">
+        <DndContext sensors={sensors} onDragEnd={(e) => void onDragEnd(e)}>
+          <div
+            id="matrix-export-root"
+            className="mx-auto box-border flex min-h-[75dvh] w-[min(100%,max(75dvw,16rem))] max-w-full flex-1 flex-col rounded-2xl border-2 border-[color:var(--border)] bg-[color:var(--surface-elevated)] p-3 shadow-[0_12px_40px_rgba(24,0,72,0.1)] sm:p-5"
+          >
+            <div className="relative grid h-full min-h-0 w-full min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] gap-1 md:gap-2">
             <div />
             <div className="pb-1 text-center text-xs font-semibold text-[color:var(--muted)]">
               Important
@@ -666,6 +667,7 @@ export function MatrixApp({ slug }: { slug: string }) {
           </div>
         </div>
       </DndContext>
+      </div>
 
       {addOpen && addQuadrant && (
         <div
