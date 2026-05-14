@@ -42,13 +42,15 @@ Open [http://localhost:3000](http://localhost:3000), create a matrix, then use `
 
 5. **Grant the app user access to Prisma tables.** Migrations run as `doadmin`, so `Matrix` and `Topic` are owned by that role. Your **app** user (in `DATABASE_URL`) must receive DML rights.
 
-   - **Option A — DigitalOcean UI:** Some clusters expose a **Query** / **SQL** / **Console** entry under the database in the control panel. Connect as **`doadmin`** and run the SQL below (replace `your_app_user` with the username from your app connection string; use double quotes if the name is mixed case).
+   - **Option A — DigitalOcean UI:** Some clusters expose a **Query** / **SQL** / **Console** entry under the database in the control panel. Connect as **`doadmin`** and run the SQL below. Put the app username in **double quotes** if it contains hyphens (e.g. `"gregs-matrix-prod"`).
 
-   - **Option B — From your laptop (no DO SQL UI):** Copy the **`doadmin`** URI into `DATABASE_MIGRATE_URL`, edit [`scripts/grant-app-user.sql`](scripts/grant-app-user.sql) and replace `app_user_placeholder` with that same app username, then run:
+   - **Option B — From your laptop (no DO SQL UI):** Copy the **`doadmin`** URI into `DATABASE_MIGRATE_URL`, edit [`scripts/grant-app-user.sql`](scripts/grant-app-user.sql): replace `"your_app_user"` with your real role name **in double quotes** (e.g. `"gregs-matrix-prod"`), then run:
 
      ```bash
      npx prisma db execute --file scripts/grant-app-user.sql --url "$DATABASE_MIGRATE_URL"
      ```
+
+     Edit the file first: set the role name **inside double quotes** on each `GRANT` line (for example `"gregs-matrix-prod"`). Hyphens, dots, or mixed case **must** be quoted in SQL; unquoted `gregs-matrix-prod` is parsed as subtraction and causes a syntax error.
 
      This uses Prisma’s CLI only (no `psql` install required). If you prefer `psql`, the same file works with:
 
@@ -59,18 +61,20 @@ Open [http://localhost:3000](http://localhost:3000), create a matrix, then use `
    SQL (same as in `scripts/grant-app-user.sql` after you substitute the user):
 
 ```sql
-GRANT USAGE ON SCHEMA public TO your_app_user;
+GRANT USAGE ON SCHEMA public TO "your_app_user";
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO your_app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "your_app_user";
 
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO your_app_user;
-
-ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA public
-  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO your_app_user;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "your_app_user";
 
 ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA public
-  GRANT USAGE, SELECT ON SEQUENCES TO your_app_user;
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "your_app_user";
+
+ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO "your_app_user";
 ```
+
+Use double quotes around the user name whenever it contains hyphens (e.g. `"gregs-matrix-prod"`).
 
 If `permission denied for table Matrix` still appears, confirm the app user in `DATABASE_URL` matches the `GRANT ... TO` role (and redeploy after changing env vars).
 
