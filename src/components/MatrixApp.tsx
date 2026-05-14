@@ -776,7 +776,12 @@ export function MatrixApp({ slug }: { slug: string }) {
       </header>
 
       {toast && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[color:var(--foreground)] px-5 py-2.5 text-sm font-medium text-[color:var(--coral-ice)] shadow-lg">
+        <div
+          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[color:var(--foreground)] px-5 py-2.5 text-sm font-medium text-[color:var(--coral-ice)] shadow-lg"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           {toast}
         </div>
       )}
