@@ -4,6 +4,8 @@ FROM node:20-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat openssl
 COPY package.json package-lock.json ./
+# postinstall runs `prisma generate`; schema must exist before npm ci
+COPY prisma ./prisma
 RUN npm ci
 
 FROM node:20-alpine AS builder
