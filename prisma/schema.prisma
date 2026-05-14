@@ -1,0 +1,36 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Quadrant {
+  DO_NOW
+  MAKE_EASY_THEN_DO
+  DO_WHEN_PASSING
+  IGNORE
+}
+
+model Matrix {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  title        String?
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  topics       Topic[]
+}
+
+model Topic {
+  id        String    @id @default(cuid())
+  matrixId  String
+  matrix    Matrix    @relation(fields: [matrixId], references: [id], onDelete: Cascade)
+  text      String
+  quadrant  Quadrant
+  sortOrder Int       @default(0)
+  updatedAt DateTime  @updatedAt
+
+  @@index([matrixId, quadrant])
+}
