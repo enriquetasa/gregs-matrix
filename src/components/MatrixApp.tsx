@@ -17,7 +17,7 @@ import { toCanvas } from "html-to-image";
 import { jsPDF } from "jspdf";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getMatrixExportImageOptions } from "@/lib/matrix-export-image";
 import { QUADRANT_LABELS } from "@/lib/quadrants";
 
@@ -160,6 +160,11 @@ function DroppableQuadrant({
   );
 }
 
+type HistoryFrame = {
+  undo: () => Promise<void>;
+  redo: () => Promise<void>;
+};
+
 export function MatrixApp({ slug }: { slug: string }) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [passwordInput, setPasswordInput] = useState("");
@@ -176,6 +181,22 @@ export function MatrixApp({ slug }: { slug: string }) {
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [inlineStatus, setInlineStatus] = useState<string | null>(null);
+  const undoPastRef = useRef<HistoryFrame[]>([]);
+  const undoFutureRef = useRef<HistoryFrame[]>([]);
+  const [historyTick, setHistoryTick] = useState(0);
+
+  const bumpHistory = useCallback(() => {
+    setHistoryTick((n) => n + 1);
+  }, []);
+
+  const pushHistory = useCallback(
+    (frame: HistoryFrame) => {
+      undoFutureRef.current = [];
+      undoPastRef.current = [...undoPastRef.current, frame];
+      bumpHistory();
+    },
+    [bumpHistory],
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -232,6 +253,12 @@ export function MatrixApp({ slug }: { slug: string }) {
   }, [load]);
 
   useEffect(() => {
+    undoPastRef.current = [];
+    undoFutureRef.current = [];
+    bumpHistory();
+  }, [slug, bumpHistory]);
+
+  useEffect(() => {
     if (state.status !== "ready" || !state.authorized) return;
     const id = window.setInterval(() => void load(), 15_000);
     return () => window.clearInterval(id);
@@ -249,10 +276,54 @@ export function MatrixApp({ slug }: { slug: string }) {
     return map;
   }, [state]);
 
+  void historyTick;
+  const canUndo = undoPastRef.current.length > 0;
+  const canRedo = undoFutureRef.current.length > 0;
+
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     window.setTimeout(() => setToast(null), 2400);
   }, []);
+
+  const runUndo = useCallback(async () => {
+    const past = undoPastRef.current;
+    const frame = past[past.length - 1];
+    if (!frame) return;
+    setBusy(true);
+    setInlineStatus("Undoing…");
+    try {
+      await frame.undo();
+      await load();
+      undoPastRef.current = past.slice(0, -1);
+      undoFutureRef.current = [frame, ...undoFutureRef.current];
+      bumpHistory();
+    } catch {
+      showToast("Undo failed.");
+    } finally {
+      setBusy(false);
+      setInlineStatus(null);
+    }
+  }, [load, showToast, bumpHistory]);
+
+  const runRedo = useCallback(async () => {
+    const future = undoFutureRef.current;
+    const frame = future[0];
+    if (!frame) return;
+    setBusy(true);
+    setInlineStatus("Redoing…");
+    try {
+      await frame.redo();
+      await load();
+      undoFutureRef.current = future.slice(1);
+      undoPastRef.current = [...undoPastRef.current, frame];
+      bumpHistory();
+    } catch {
+      showToast("Redo failed.");
+    } finally {
+      setBusy(false);
+      setInlineStatus(null);
+    }
+  }, [load, showToast, bumpHistory]);
 
   const onUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -327,6 +398,27 @@ export function MatrixApp({ slug }: { slug: string }) {
         return;
       }
       await load();
+      const oldQ = topic.quadrant;
+      const newQ = nextQuadrant;
+      const id = topicId;
+      pushHistory({
+        undo: async () => {
+          await fetch(`/api/matrices/${slug}/topics/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ quadrant: oldQ }),
+          });
+        },
+        redo: async () => {
+          await fetch(`/api/matrices/${slug}/topics/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ quadrant: newQ }),
+          });
+        },
+      });
     } finally {
       setBusy(false);
       setInlineStatus(null);
@@ -356,10 +448,27 @@ export function MatrixApp({ slug }: { slug: string }) {
         setAddError("Could not add topic.");
         return;
       }
+      const dto = (await res.json()) as TopicDto;
       setAddOpen(false);
       setAddText("");
       setAddQuadrant(null);
       await load();
+      pushHistory({
+        undo: async () => {
+          await fetch(`/api/matrices/${slug}/topics/${dto.id}`, {
+            method: "DELETE",
+            credentials: "include",
+          });
+        },
+        redo: async () => {
+          await fetch(`/api/matrices/${slug}/topics`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ text: dto.text, quadrant: dto.quadrant }),
+          });
+        },
+      });
     } finally {
       setBusy(false);
       setInlineStatus(null);
@@ -368,6 +477,9 @@ export function MatrixApp({ slug }: { slug: string }) {
 
   const deleteTopic = async (topicId: string) => {
     if (state.status !== "ready" || !state.authorized) return;
+    const snap = state.topics.find((t) => t.id === topicId);
+    if (!snap) return;
+    let restoredId: string | null = null;
     setInlineStatus("Deleting note…");
     setBusy(true);
     try {
@@ -376,6 +488,27 @@ export function MatrixApp({ slug }: { slug: string }) {
         credentials: "include",
       });
       await load();
+      pushHistory({
+        undo: async () => {
+          const r = await fetch(`/api/matrices/${slug}/topics`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ text: snap.text, quadrant: snap.quadrant }),
+          });
+          if (r.ok) {
+            const j = (await r.json()) as TopicDto;
+            restoredId = j.id;
+          }
+        },
+        redo: async () => {
+          if (!restoredId) return;
+          await fetch(`/api/matrices/${slug}/topics/${restoredId}`, {
+            method: "DELETE",
+            credentials: "include",
+          });
+        },
+      });
     } finally {
       setBusy(false);
       setInlineStatus(null);
@@ -580,6 +713,26 @@ export function MatrixApp({ slug }: { slug: string }) {
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="rounded-full border-2 border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-sm font-medium text-[color:var(--foreground)] shadow-sm hover:bg-[color:var(--surface-elevated)] disabled:opacity-40"
+            disabled={busy || !canUndo}
+            title="Undo last change"
+            aria-label="Undo"
+            onClick={() => void runUndo()}
+          >
+            Undo
+          </button>
+          <button
+            type="button"
+            className="rounded-full border-2 border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-sm font-medium text-[color:var(--foreground)] shadow-sm hover:bg-[color:var(--surface-elevated)] disabled:opacity-40"
+            disabled={busy || !canRedo}
+            title="Redo"
+            aria-label="Redo"
+            onClick={() => void runRedo()}
+          >
+            Redo
+          </button>
           <button
             type="button"
             className="rounded-full border-2 border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-sm font-medium text-[color:var(--foreground)] shadow-sm hover:bg-[color:var(--surface-elevated)]"
