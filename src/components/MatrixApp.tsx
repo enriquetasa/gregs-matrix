@@ -55,10 +55,10 @@ const quadrantSurface: Record<Quadrant, string> = {
     "bg-[color:var(--quad-ignore-bg)] border-[color:var(--quad-ignore-border)]",
 };
 
-/** Rows top→bottom: Easy, Hard. Columns left→right: Not important, Important. */
+/** Rows top→bottom: Easy, Hard. Columns left→right: Important, Not important. */
 const gridQuadrants: Quadrant[][] = [
-  ["DO_WHEN_PASSING", "DO_NOW"],
-  ["IGNORE", "MAKE_EASY_THEN_DO"],
+  ["DO_NOW", "DO_WHEN_PASSING"],
+  ["MAKE_EASY_THEN_DO", "IGNORE"],
 ];
 
 function DraggableTopic({
@@ -565,35 +565,15 @@ export function MatrixApp({ slug }: { slug: string }) {
           <div className="relative grid grid-cols-[auto_1fr_1fr] grid-rows-[auto_1fr_1fr_auto] gap-1 md:gap-2">
             <div />
             <div className="pb-1 text-center text-xs font-semibold text-[color:var(--muted)]">
-              Not important
+              Important
             </div>
             <div className="pb-1 text-center text-xs font-semibold text-[color:var(--muted)]">
-              Important
+              Not important
             </div>
 
             <div className="flex items-center justify-end pr-2 text-xs font-semibold text-[color:var(--muted)] [writing-mode:vertical-rl] rotate-180">
               Easy
             </div>
-            <DroppableQuadrant
-              id="DO_WHEN_PASSING"
-              label={QUADRANT_LABELS.DO_WHEN_PASSING}
-              disabled={disabled}
-              onBackgroundDoubleClick={(q) => {
-                setAddQuadrant(q);
-                setAddText("");
-                setAddError(null);
-                setAddOpen(true);
-              }}
-            >
-              {(topicsByQuadrant.get("DO_WHEN_PASSING") ?? []).map((t) => (
-                <DraggableTopic
-                  key={t.id}
-                  topic={t}
-                  disabled={disabled}
-                  onDelete={(id) => void deleteTopic(id)}
-                />
-              ))}
-            </DroppableQuadrant>
             <DroppableQuadrant
               id="DO_NOW"
               label={QUADRANT_LABELS.DO_NOW}
@@ -614,13 +594,9 @@ export function MatrixApp({ slug }: { slug: string }) {
                 />
               ))}
             </DroppableQuadrant>
-
-            <div className="flex items-center justify-end pr-2 text-xs font-semibold text-[color:var(--muted)] [writing-mode:vertical-rl] rotate-180">
-              Hard
-            </div>
             <DroppableQuadrant
-              id="IGNORE"
-              label={QUADRANT_LABELS.IGNORE}
+              id="DO_WHEN_PASSING"
+              label={QUADRANT_LABELS.DO_WHEN_PASSING}
               disabled={disabled}
               onBackgroundDoubleClick={(q) => {
                 setAddQuadrant(q);
@@ -629,7 +605,7 @@ export function MatrixApp({ slug }: { slug: string }) {
                 setAddOpen(true);
               }}
             >
-              {(topicsByQuadrant.get("IGNORE") ?? []).map((t) => (
+              {(topicsByQuadrant.get("DO_WHEN_PASSING") ?? []).map((t) => (
                 <DraggableTopic
                   key={t.id}
                   topic={t}
@@ -638,6 +614,10 @@ export function MatrixApp({ slug }: { slug: string }) {
                 />
               ))}
             </DroppableQuadrant>
+
+            <div className="flex items-center justify-end pr-2 text-xs font-semibold text-[color:var(--muted)] [writing-mode:vertical-rl] rotate-180">
+              Hard
+            </div>
             <DroppableQuadrant
               id="MAKE_EASY_THEN_DO"
               label={QUADRANT_LABELS.MAKE_EASY_THEN_DO}
@@ -658,10 +638,30 @@ export function MatrixApp({ slug }: { slug: string }) {
                 />
               ))}
             </DroppableQuadrant>
+            <DroppableQuadrant
+              id="IGNORE"
+              label={QUADRANT_LABELS.IGNORE}
+              disabled={disabled}
+              onBackgroundDoubleClick={(q) => {
+                setAddQuadrant(q);
+                setAddText("");
+                setAddError(null);
+                setAddOpen(true);
+              }}
+            >
+              {(topicsByQuadrant.get("IGNORE") ?? []).map((t) => (
+                <DraggableTopic
+                  key={t.id}
+                  topic={t}
+                  disabled={disabled}
+                  onDelete={(id) => void deleteTopic(id)}
+                />
+              ))}
+            </DroppableQuadrant>
 
             <div />
             <div className="col-span-2 pt-2 text-center text-xs text-[color:var(--muted)]">
-              Importance increases left → right · Ease increases top → bottom
+              Importance decreases left → right · Ease increases top → bottom
             </div>
           </div>
         </div>
