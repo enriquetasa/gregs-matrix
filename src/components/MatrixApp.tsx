@@ -11,12 +11,12 @@ import {
 } from "@dnd-kit/core";
 import type { Quadrant } from "@prisma/client";
 import { CSS } from "@dnd-kit/utilities";
-import html2canvas from "html2canvas";
+import { toCanvas } from "html-to-image";
 import { jsPDF } from "jspdf";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getMatrixExportHtml2CanvasOptions } from "@/lib/matrix-export-html2canvas";
+import { getMatrixExportImageOptions } from "@/lib/matrix-export-image";
 import { QUADRANT_LABELS } from "@/lib/quadrants";
 
 type TopicDto = {
@@ -340,7 +340,8 @@ export function MatrixApp({ slug }: { slug: string }) {
     if (!node) return;
     setBusy(true);
     try {
-      const canvas = await html2canvas(node, getMatrixExportHtml2CanvasOptions());
+      await document.fonts.ready;
+      const canvas = await toCanvas(node, getMatrixExportImageOptions());
       const url = canvas.toDataURL("image/png");
       const a = document.createElement("a");
       a.href = url;
@@ -364,7 +365,8 @@ export function MatrixApp({ slug }: { slug: string }) {
     if (!node) return;
     setBusy(true);
     try {
-      const canvas = await html2canvas(node, getMatrixExportHtml2CanvasOptions());
+      await document.fonts.ready;
+      const canvas = await toCanvas(node, getMatrixExportImageOptions());
       const img = canvas.toDataURL("image/png");
       const pdf = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
       const pageW = pdf.internal.pageSize.getWidth();
