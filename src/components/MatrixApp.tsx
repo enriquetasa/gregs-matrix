@@ -16,6 +16,7 @@ import { jsPDF } from "jspdf";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { matrixExportHtml2CanvasOptions } from "@/lib/matrix-export-html2canvas";
 import { QUADRANT_LABELS } from "@/lib/quadrants";
 
 type TopicDto = {
@@ -334,18 +335,19 @@ export function MatrixApp({ slug }: { slug: string }) {
     if (!node) return;
     setBusy(true);
     try {
-      const canvas = await html2canvas(node, {
-        scale: 2,
-        backgroundColor: "#fafaf9",
-        useCORS: true,
-      });
+      const canvas = await html2canvas(node, matrixExportHtml2CanvasOptions);
       const url = canvas.toDataURL("image/png");
       const a = document.createElement("a");
       a.href = url;
       a.download = `matrix-${slug}.png`;
+      a.rel = "noopener";
+      a.style.display = "none";
+      document.body.appendChild(a);
       a.click();
+      a.remove();
       showToast("Image downloaded");
-    } catch {
+    } catch (err) {
+      console.error("Image export failed", err);
       showToast("Image export failed");
     } finally {
       setBusy(false);
@@ -357,11 +359,7 @@ export function MatrixApp({ slug }: { slug: string }) {
     if (!node) return;
     setBusy(true);
     try {
-      const canvas = await html2canvas(node, {
-        scale: 2,
-        backgroundColor: "#fafaf9",
-        useCORS: true,
-      });
+      const canvas = await html2canvas(node, matrixExportHtml2CanvasOptions);
       const img = canvas.toDataURL("image/png");
       const pdf = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
       const pageW = pdf.internal.pageSize.getWidth();
@@ -377,7 +375,8 @@ export function MatrixApp({ slug }: { slug: string }) {
       pdf.addImage(img, "PNG", x, y, w, h);
       pdf.save(`matrix-${slug}.pdf`);
       showToast("PDF downloaded");
-    } catch {
+    } catch (err) {
+      console.error("PDF export failed", err);
       showToast("PDF export failed");
     } finally {
       setBusy(false);
