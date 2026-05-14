@@ -40,7 +40,25 @@ Open [http://localhost:3000](http://localhost:3000), create a matrix, then use `
 
 4. On first deploy, the Docker image runs `node scripts/migrate-deploy.cjs` (migrations) then `npm run start`. `migrate-deploy` prefers `DATABASE_MIGRATE_URL` so the app user does not need `CREATE` on schema `public` (PostgreSQL 15+). If you use a buildpack without this Dockerfile, run `npm run db:migrate` (with the same env vars) in a **Job** or release phase before traffic hits the app.
 
-5. Optional: set **HTTP port** to `3000` and enable health checks on `GET /api/health`.
+5. **Grant the app user access to Prisma tables.** Migrations run as `doadmin`, so `Matrix` and `Topic` are owned by that role. Your **app** user (in `DATABASE_URL`) must receive DML rights. In the DO database **Query** tab, connect as **`doadmin`** and run (replace `your_app_user` with the username from your app connection string—use double quotes if the name is mixed case):
+
+```sql
+GRANT USAGE ON SCHEMA public TO your_app_user;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO your_app_user;
+
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO your_app_user;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO your_app_user;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO your_app_user;
+```
+
+If `permission denied for table Matrix` still appears, confirm the app user in `DATABASE_URL` matches the `GRANT ... TO` role (and redeploy after changing env vars).
+
+6. Optional: set **HTTP port** to `3000` and enable health checks on `GET /api/health`.
 
 There is no built-in “forgot password” for a matrix; if you lose the password, create a new matrix or reset `passwordHash` in the database.
 
