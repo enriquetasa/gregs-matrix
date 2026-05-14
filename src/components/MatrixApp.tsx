@@ -82,21 +82,42 @@ function DragTopicPreview({ text }: { text: string }) {
 function DraggableTopic({
   topic,
   disabled,
+  readOnly,
   onDelete,
+  onCommitText,
 }: {
   topic: TopicDto;
   disabled: boolean;
+  readOnly?: boolean;
   onDelete: (id: string) => void;
+  onCommitText: (id: string, text: string) => Promise<void>;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: topic.id,
-      disabled,
+      disabled: disabled || readOnly,
     });
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(topic.text);
   const style = {
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.35 : 1,
   };
+
+  useEffect(() => {
+    if (!editing) setDraft(topic.text);
+  }, [topic.text, editing]);
+
+  const finishEdit = async () => {
+    const next = draft.trim();
+    setEditing(false);
+    if (next.length < 1 || next.length > 120 || next === topic.text) {
+      setDraft(topic.text);
+      return;
+    }
+    await onCommitText(topic.id, next);
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -106,20 +127,68 @@ function DraggableTopic({
       data-topic
       className="group relative w-fit max-w-[11rem] shrink-0 cursor-grab touch-none rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-xs leading-snug text-[color:var(--foreground)] shadow-sm active:cursor-grabbing md:max-w-[12rem] md:px-2.5 md:py-2 md:text-sm md:shadow-md md:[transform:rotate(0.5deg)]"
     >
-      <p className="pr-7 leading-snug">{topic.text}</p>
-      {!disabled && (
-        <button
-          type="button"
-          aria-label="Remove topic"
-          className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] text-sm font-bold text-[color:var(--foreground)] shadow-sm hover:bg-[color:var(--danger)]/15 hover:text-[color:var(--danger)]"
+      {editing ? (
+        <textarea
+          className="w-full min-w-[8rem] resize-none rounded border border-[color:var(--border)] bg-[color:var(--surface-elevated)] px-1 py-0.5 text-xs text-[color:var(--foreground)] outline-none ring-[color:var(--accent-secondary)]/40 focus:ring-1"
+          rows={3}
+          maxLength={120}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setDraft(topic.text);
+              setEditing(false);
+            }
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              void finishEdit();
+            }
+          }}
+          onBlur={() => void finishEdit()}
+          autoFocus
+        />
+      ) : (
+        <p
+          className="cursor-text pr-7 leading-snug"
+          onDoubleClick={(e) => {
             e.stopPropagation();
-            onDelete(topic.id);
+            if (readOnly || disabled) return;
+            setEditing(true);
+            setDraft(topic.text);
           }}
         >
-          ×
-        </button>
+          {topic.text}
+        </p>
+      )}
+      {!disabled && !readOnly && !editing && (
+        <>
+          <button
+            type="button"
+            aria-label="Edit topic"
+            className="absolute right-8 top-1 flex h-7 w-7 items-center justify-center rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] text-xs font-semibold text-[color:var(--muted)] shadow-sm hover:text-[color:var(--foreground)]"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditing(true);
+              setDraft(topic.text);
+            }}
+          >
+            ✎
+          </button>
+          <button
+            type="button"
+            aria-label="Remove topic"
+            className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] text-sm font-bold text-[color:var(--foreground)] shadow-sm hover:bg-[color:var(--danger)]/15 hover:text-[color:var(--danger)]"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(topic.id);
+            }}
+          >
+            ×
+          </button>
+        </>
       )}
     </div>
   );
@@ -515,6 +584,48 @@ export function MatrixApp({ slug }: { slug: string }) {
     }
   };
 
+  const commitTopicText = async (topicId: string, newText: string) => {
+    if (state.status !== "ready" || !state.authorized) return;
+    const prev = state.topics.find((t) => t.id === topicId)?.text ?? "";
+    if (newText === prev) return;
+    setInlineStatus("Saving note…");
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/matrices/${slug}/topics/${topicId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ text: newText }),
+      });
+      if (!res.ok) {
+        showToast("Could not save note.");
+        return;
+      }
+      await load();
+      pushHistory({
+        undo: async () => {
+          await fetch(`/api/matrices/${slug}/topics/${topicId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ text: prev }),
+          });
+        },
+        redo: async () => {
+          await fetch(`/api/matrices/${slug}/topics/${topicId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ text: newText }),
+          });
+        },
+      });
+    } finally {
+      setBusy(false);
+      setInlineStatus(null);
+    }
+  };
+
   const copyShareLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -826,6 +937,7 @@ export function MatrixApp({ slug }: { slug: string }) {
                   topic={t}
                   disabled={disabled}
                   onDelete={(id) => void deleteTopic(id)}
+                  onCommitText={(id, text) => commitTopicText(id, text)}
                 />
               ))}
             </DroppableQuadrant>
@@ -846,6 +958,7 @@ export function MatrixApp({ slug }: { slug: string }) {
                   topic={t}
                   disabled={disabled}
                   onDelete={(id) => void deleteTopic(id)}
+                  onCommitText={(id, text) => commitTopicText(id, text)}
                 />
               ))}
             </DroppableQuadrant>
@@ -870,6 +983,7 @@ export function MatrixApp({ slug }: { slug: string }) {
                   topic={t}
                   disabled={disabled}
                   onDelete={(id) => void deleteTopic(id)}
+                  onCommitText={(id, text) => commitTopicText(id, text)}
                 />
               ))}
             </DroppableQuadrant>
@@ -890,6 +1004,7 @@ export function MatrixApp({ slug }: { slug: string }) {
                   topic={t}
                   disabled={disabled}
                   onDelete={(id) => void deleteTopic(id)}
+                  onCommitText={(id, text) => commitTopicText(id, text)}
                 />
               ))}
             </DroppableQuadrant>
