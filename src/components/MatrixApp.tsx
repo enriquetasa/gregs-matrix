@@ -16,6 +16,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { toCanvas } from "html-to-image";
 import { jsPDF } from "jspdf";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getMatrixExportImageOptions } from "@/lib/matrix-export-image";
@@ -126,7 +127,11 @@ function DraggableTopic({
       {...listeners}
       {...attributes}
       data-topic
-      className="group relative w-fit max-w-[11rem] shrink-0 cursor-grab touch-none rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-xs leading-snug text-[color:var(--foreground)] shadow-sm active:cursor-grabbing md:max-w-[12rem] md:px-2.5 md:py-2 md:text-sm md:shadow-md md:[transform:rotate(0.5deg)]"
+      className={`group relative w-fit max-w-[11rem] shrink-0 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-xs leading-snug text-[color:var(--foreground)] shadow-sm md:max-w-[12rem] md:px-2.5 md:py-2 md:text-sm md:shadow-md md:[transform:rotate(0.5deg)] ${
+        readOnly
+          ? "cursor-default"
+          : "cursor-grab touch-none active:cursor-grabbing"
+      }`}
     >
       {editing ? (
         <textarea
@@ -236,6 +241,10 @@ type HistoryFrame = {
 };
 
 export function MatrixApp({ slug }: { slug: string }) {
+  const searchParams = useSearchParams();
+  const readOnly =
+    searchParams.get("ro") === "1" || searchParams.get("readonly") === "1";
+
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [passwordInput, setPasswordInput] = useState("");
   const [unlockError, setUnlockError] = useState<string | null>(null);
@@ -363,6 +372,7 @@ export function MatrixApp({ slug }: { slug: string }) {
   }, []);
 
   const runUndo = useCallback(async () => {
+    if (readOnly) return;
     const past = undoPastRef.current;
     const frame = past[past.length - 1];
     if (!frame) return;
@@ -380,9 +390,10 @@ export function MatrixApp({ slug }: { slug: string }) {
       setBusy(false);
       setInlineStatus(null);
     }
-  }, [load, showToast, bumpHistory]);
+  }, [load, showToast, bumpHistory, readOnly]);
 
   const runRedo = useCallback(async () => {
+    if (readOnly) return;
     const future = undoFutureRef.current;
     const frame = future[0];
     if (!frame) return;
@@ -400,7 +411,7 @@ export function MatrixApp({ slug }: { slug: string }) {
       setBusy(false);
       setInlineStatus(null);
     }
-  }, [load, showToast, bumpHistory]);
+  }, [load, showToast, bumpHistory, readOnly]);
 
   const onUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -437,6 +448,7 @@ export function MatrixApp({ slug }: { slug: string }) {
 
   const onDragEnd = async (event: DragEndEvent) => {
     try {
+      if (readOnly) return;
       if (state.status !== "ready" || !state.authorized) return;
       const { active, over } = event;
       if (!over) return;
@@ -498,6 +510,7 @@ export function MatrixApp({ slug }: { slug: string }) {
 
   const submitAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (readOnly) return;
     if (!addQuadrant) return;
     setAddError(null);
     const text = addText.trim();
@@ -546,6 +559,7 @@ export function MatrixApp({ slug }: { slug: string }) {
   };
 
   const deleteTopic = async (topicId: string) => {
+    if (readOnly) return;
     if (state.status !== "ready" || !state.authorized) return;
     const snap = state.topics.find((t) => t.id === topicId);
     if (!snap) return;
@@ -586,6 +600,7 @@ export function MatrixApp({ slug }: { slug: string }) {
   };
 
   const commitTopicText = async (topicId: string, newText: string) => {
+    if (readOnly) return;
     if (state.status !== "ready" || !state.authorized) return;
     const prev = state.topics.find((t) => t.id === topicId)?.text ?? "";
     if (newText === prev) return;
@@ -710,6 +725,7 @@ export function MatrixApp({ slug }: { slug: string }) {
 
   const submitSettings = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (readOnly) return;
     if (state.status !== "ready" || !state.authorized) return;
     setSettingsError(null);
     setInlineStatus("Saving password…");
@@ -808,7 +824,7 @@ export function MatrixApp({ slug }: { slug: string }) {
     );
   }
 
-  const disabled = !state.authorized || busy;
+  const interactDisabled = !state.authorized || busy || readOnly;
 
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-6xl flex-col gap-4 px-4 py-4 md:gap-6 md:px-6 md:py-6">
@@ -821,7 +837,9 @@ export function MatrixApp({ slug }: { slug: string }) {
             {state.matrix.title?.trim() || "Importance × Ease"}
           </h1>
           <p className="mt-1 text-sm text-[color:var(--muted)]">
-            Tap a quadrant to add a note.
+            {readOnly
+              ? "View only — copy link and export still work."
+              : "Tap a quadrant to add a note."}
           </p>
           {inlineStatus ? (
             <p
@@ -836,7 +854,7 @@ export function MatrixApp({ slug }: { slug: string }) {
           <button
             type="button"
             className="rounded-full border-2 border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-sm font-medium text-[color:var(--foreground)] shadow-sm hover:bg-[color:var(--surface-elevated)] disabled:opacity-40"
-            disabled={busy || !canUndo}
+            disabled={busy || !canUndo || readOnly}
             title="Undo last change"
             aria-label="Undo"
             onClick={() => void runUndo()}
@@ -846,7 +864,7 @@ export function MatrixApp({ slug }: { slug: string }) {
           <button
             type="button"
             className="rounded-full border-2 border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-sm font-medium text-[color:var(--foreground)] shadow-sm hover:bg-[color:var(--surface-elevated)] disabled:opacity-40"
-            disabled={busy || !canRedo}
+            disabled={busy || !canRedo || readOnly}
             title="Redo"
             aria-label="Redo"
             onClick={() => void runRedo()}
@@ -890,16 +908,18 @@ export function MatrixApp({ slug }: { slug: string }) {
           >
             {exportKind === "pdf" ? "Preparing PDF…" : "Export PDF"}
           </button>
-          <button
-            type="button"
-            className="rounded-full border-2 border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-sm font-medium text-[color:var(--foreground)] shadow-sm hover:bg-[color:var(--surface-elevated)]"
-            onClick={() => {
-              setSettingsError(null);
-              setSettingsOpen(true);
-            }}
-          >
-            Matrix password…
-          </button>
+          {!readOnly ? (
+            <button
+              type="button"
+              className="rounded-full border-2 border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-sm font-medium text-[color:var(--foreground)] shadow-sm hover:bg-[color:var(--surface-elevated)]"
+              onClick={() => {
+                setSettingsError(null);
+                setSettingsOpen(true);
+              }}
+            >
+              Matrix password…
+            </button>
+          ) : null}
           <Link
             className="rounded-full px-4 py-2 text-sm font-medium text-[color:var(--accent-strong)] underline decoration-2 underline-offset-2 hover:text-[color:var(--accent)]"
             href="/"
@@ -946,7 +966,7 @@ export function MatrixApp({ slug }: { slug: string }) {
             <DroppableQuadrant
               id="MAKE_EASY_THEN_DO"
               label={QUADRANT_LABELS.MAKE_EASY_THEN_DO}
-              disabled={disabled}
+              disabled={interactDisabled}
               onQuadrantClick={(q) => {
                 setAddQuadrant(q);
                 setAddText("");
@@ -958,7 +978,8 @@ export function MatrixApp({ slug }: { slug: string }) {
                 <DraggableTopic
                   key={t.id}
                   topic={t}
-                  disabled={disabled}
+                  disabled={interactDisabled}
+                  readOnly={readOnly}
                   onDelete={(id) => void deleteTopic(id)}
                   onCommitText={(id, text) => commitTopicText(id, text)}
                 />
@@ -967,7 +988,7 @@ export function MatrixApp({ slug }: { slug: string }) {
             <DroppableQuadrant
               id="IGNORE"
               label={QUADRANT_LABELS.IGNORE}
-              disabled={disabled}
+              disabled={interactDisabled}
               onQuadrantClick={(q) => {
                 setAddQuadrant(q);
                 setAddText("");
@@ -979,7 +1000,8 @@ export function MatrixApp({ slug }: { slug: string }) {
                 <DraggableTopic
                   key={t.id}
                   topic={t}
-                  disabled={disabled}
+                  disabled={interactDisabled}
+                  readOnly={readOnly}
                   onDelete={(id) => void deleteTopic(id)}
                   onCommitText={(id, text) => commitTopicText(id, text)}
                 />
@@ -992,7 +1014,7 @@ export function MatrixApp({ slug }: { slug: string }) {
             <DroppableQuadrant
               id="DO_NOW"
               label={QUADRANT_LABELS.DO_NOW}
-              disabled={disabled}
+              disabled={interactDisabled}
               onQuadrantClick={(q) => {
                 setAddQuadrant(q);
                 setAddText("");
@@ -1004,7 +1026,8 @@ export function MatrixApp({ slug }: { slug: string }) {
                 <DraggableTopic
                   key={t.id}
                   topic={t}
-                  disabled={disabled}
+                  disabled={interactDisabled}
+                  readOnly={readOnly}
                   onDelete={(id) => void deleteTopic(id)}
                   onCommitText={(id, text) => commitTopicText(id, text)}
                 />
@@ -1013,7 +1036,7 @@ export function MatrixApp({ slug }: { slug: string }) {
             <DroppableQuadrant
               id="DO_WHEN_PASSING"
               label={QUADRANT_LABELS.DO_WHEN_PASSING}
-              disabled={disabled}
+              disabled={interactDisabled}
               onQuadrantClick={(q) => {
                 setAddQuadrant(q);
                 setAddText("");
@@ -1025,7 +1048,8 @@ export function MatrixApp({ slug }: { slug: string }) {
                 <DraggableTopic
                   key={t.id}
                   topic={t}
-                  disabled={disabled}
+                  disabled={interactDisabled}
+                  readOnly={readOnly}
                   onDelete={(id) => void deleteTopic(id)}
                   onCommitText={(id, text) => commitTopicText(id, text)}
                 />
