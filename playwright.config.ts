@@ -14,7 +14,7 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: hasDb
     ? {
-        command: "bash -c \"npx prisma migrate deploy && npm run start\"",
+        command: "bash -c \"npm run db:migrate && npm run start\"",
         url: "http://127.0.0.1:3000/api/health",
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,

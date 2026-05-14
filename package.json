@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "postinstall": "node scripts/prisma-postinstall.cjs"
+    "postinstall": "node scripts/prisma-postinstall.cjs",
+    "db:migrate": "node scripts/migrate-deploy.cjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -27,7 +27,7 @@ RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/package-lock.json ./package-lock.json
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/scripts/prisma-postinstall.cjs ./scripts/prisma-postinstall.cjs
+COPY --from=builder /app/scripts ./scripts
 RUN npm ci --omit=dev
 
 COPY --from=builder /app/.next ./.next
@@ -39,4 +39,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run start"]
+CMD ["sh", "-c", "node scripts/migrate-deploy.cjs && npm run start"]
