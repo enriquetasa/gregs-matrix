@@ -4,6 +4,7 @@ FROM node:20-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat openssl
 COPY package.json package-lock.json ./
+COPY scripts/prisma-postinstall.cjs scripts/prisma-postinstall.cjs
 RUN npm ci
 COPY prisma ./prisma
 RUN npx prisma generate
@@ -26,6 +27,7 @@ RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/package-lock.json ./package-lock.json
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/scripts/prisma-postinstall.cjs ./scripts/prisma-postinstall.cjs
 RUN npm ci --omit=dev
 
 COPY --from=builder /app/.next ./.next
