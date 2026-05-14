@@ -563,7 +563,7 @@ export function MatrixApp({ slug }: { slug: string }) {
             id="matrix-export-root"
             className="mx-auto box-border flex min-h-[75dvh] w-[min(100%,max(75dvw,16rem))] max-w-full flex-1 flex-col rounded-2xl border-2 border-[color:var(--border)] bg-[color:var(--surface-elevated)] p-3 shadow-[0_12px_40px_rgba(24,0,72,0.1)] sm:p-5"
           >
-            <div className="relative grid h-full min-h-0 w-full min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] gap-1 md:gap-2">
+            <div className="relative grid h-full min-h-0 w-full min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_minmax(0,1fr)] gap-1 md:gap-2">
             <div />
             <div className="pb-1 text-center text-xs font-semibold text-[color:var(--muted)]">
               Important
@@ -660,10 +660,6 @@ export function MatrixApp({ slug }: { slug: string }) {
               ))}
             </DroppableQuadrant>
 
-            <div />
-            <div className="col-span-2 pt-2 text-center text-xs text-[color:var(--muted)]">
-              Importance decreases left → right · Ease increases bottom → top
-            </div>
           </div>
         </div>
       </DndContext>
