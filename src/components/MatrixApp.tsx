@@ -29,6 +29,7 @@ import {
 import { getMatrixExportImageOptions } from "@/lib/matrix-export-image";
 import { HttpMutationError, fetchMutation } from "@/lib/fetch-mutation";
 import { messageFromFailedResponse } from "@/lib/http-error-message";
+import { shouldPollMatrix } from "@/lib/matrix-polling";
 import { QUADRANT_LABELS } from "@/lib/quadrants";
 
 type TopicDto = {
@@ -360,10 +361,21 @@ export function MatrixApp({ slug }: { slug: string }) {
   }, [slug, bumpHistory]);
 
   useEffect(() => {
-    if (state.status !== "ready" || !state.authorized) return;
+    const ready = state.status === "ready";
+    const authorized = ready && state.authorized;
+    if (
+      !shouldPollMatrix({
+        ready,
+        authorized,
+        busy,
+        activeDragId,
+      })
+    ) {
+      return;
+    }
     const id = window.setInterval(() => void load(), 15_000);
     return () => window.clearInterval(id);
-  }, [load, state]);
+  }, [load, state, busy, activeDragId]);
 
   useLayoutEffect(() => {
     if (!matrixTitleEditing) return;
@@ -508,7 +520,7 @@ export function MatrixApp({ slug }: { slug: string }) {
       const id = topicId;
       pushHistory({
         undo: async () => {
-          await fetch(`/api/matrices/${slug}/topics/${id}`, {
+          await fetchMutation(`/api/matrices/${slug}/topics/${id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -516,7 +528,7 @@ export function MatrixApp({ slug }: { slug: string }) {
           });
         },
         redo: async () => {
-          await fetch(`/api/matrices/${slug}/topics/${id}`, {
+          await fetchMutation(`/api/matrices/${slug}/topics/${id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
