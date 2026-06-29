@@ -27,6 +27,7 @@ import {
   useState,
 } from "react";
 import { getMatrixExportImageOptions } from "@/lib/matrix-export-image";
+import { HttpMutationError, fetchMutation } from "@/lib/fetch-mutation";
 import { messageFromFailedResponse } from "@/lib/http-error-message";
 import { QUADRANT_LABELS } from "@/lib/quadrants";
 
@@ -589,32 +590,36 @@ export function MatrixApp({ slug }: { slug: string }) {
     setInlineStatus("Deleting note…");
     setBusy(true);
     try {
-      await fetch(`/api/matrices/${slug}/topics/${topicId}`, {
+      await fetchMutation(`/api/matrices/${slug}/topics/${topicId}`, {
         method: "DELETE",
         credentials: "include",
       });
       await load();
       pushHistory({
         undo: async () => {
-          const r = await fetch(`/api/matrices/${slug}/topics`, {
+          const r = await fetchMutation(`/api/matrices/${slug}/topics`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
             body: JSON.stringify({ text: snap.text, quadrant: snap.quadrant }),
           });
-          if (r.ok) {
-            const j = (await r.json()) as TopicDto;
-            restoredId = j.id;
-          }
+          const j = (await r.json()) as TopicDto;
+          restoredId = j.id;
         },
         redo: async () => {
           if (!restoredId) return;
-          await fetch(`/api/matrices/${slug}/topics/${restoredId}`, {
+          await fetchMutation(`/api/matrices/${slug}/topics/${restoredId}`, {
             method: "DELETE",
             credentials: "include",
           });
         },
       });
+    } catch (error) {
+      if (error instanceof HttpMutationError) {
+        showToast(await messageFromFailedResponse(error.response));
+      } else {
+        showToast("Delete failed.");
+      }
     } finally {
       setBusy(false);
       setInlineStatus(null);
