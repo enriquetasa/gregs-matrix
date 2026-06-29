@@ -27,7 +27,9 @@ import {
   useState,
 } from "react";
 import { getMatrixExportImageOptions } from "@/lib/matrix-export-image";
+import { HttpMutationError, fetchMutation } from "@/lib/fetch-mutation";
 import { messageFromFailedResponse } from "@/lib/http-error-message";
+import { shouldPollMatrix } from "@/lib/matrix-polling";
 import { QUADRANT_LABELS } from "@/lib/quadrants";
 
 type TopicDto = {
@@ -359,10 +361,21 @@ export function MatrixApp({ slug }: { slug: string }) {
   }, [slug, bumpHistory]);
 
   useEffect(() => {
-    if (state.status !== "ready" || !state.authorized) return;
+    const ready = state.status === "ready";
+    const authorized = ready && state.authorized;
+    if (
+      !shouldPollMatrix({
+        ready,
+        authorized,
+        busy,
+        activeDragId,
+      })
+    ) {
+      return;
+    }
     const id = window.setInterval(() => void load(), 15_000);
     return () => window.clearInterval(id);
-  }, [load, state]);
+  }, [load, state, busy, activeDragId]);
 
   useLayoutEffect(() => {
     if (!matrixTitleEditing) return;
@@ -406,8 +419,12 @@ export function MatrixApp({ slug }: { slug: string }) {
       undoPastRef.current = past.slice(0, -1);
       undoFutureRef.current = [frame, ...undoFutureRef.current];
       bumpHistory();
-    } catch {
-      showToast("Undo failed.");
+    } catch (error) {
+      if (error instanceof HttpMutationError) {
+        showToast(await messageFromFailedResponse(error.response));
+      } else {
+        showToast("Undo failed.");
+      }
     } finally {
       setBusy(false);
       setInlineStatus(null);
@@ -427,8 +444,12 @@ export function MatrixApp({ slug }: { slug: string }) {
       undoFutureRef.current = future.slice(1);
       undoPastRef.current = [...undoPastRef.current, frame];
       bumpHistory();
-    } catch {
-      showToast("Redo failed.");
+    } catch (error) {
+      if (error instanceof HttpMutationError) {
+        showToast(await messageFromFailedResponse(error.response));
+      } else {
+        showToast("Redo failed.");
+      }
     } finally {
       setBusy(false);
       setInlineStatus(null);
@@ -507,7 +528,7 @@ export function MatrixApp({ slug }: { slug: string }) {
       const id = topicId;
       pushHistory({
         undo: async () => {
-          await fetch(`/api/matrices/${slug}/topics/${id}`, {
+          await fetchMutation(`/api/matrices/${slug}/topics/${id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -515,7 +536,7 @@ export function MatrixApp({ slug }: { slug: string }) {
           });
         },
         redo: async () => {
-          await fetch(`/api/matrices/${slug}/topics/${id}`, {
+          await fetchMutation(`/api/matrices/${slug}/topics/${id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -560,13 +581,13 @@ export function MatrixApp({ slug }: { slug: string }) {
       await load();
       pushHistory({
         undo: async () => {
-          await fetch(`/api/matrices/${slug}/topics/${dto.id}`, {
+          await fetchMutation(`/api/matrices/${slug}/topics/${dto.id}`, {
             method: "DELETE",
             credentials: "include",
           });
         },
         redo: async () => {
-          await fetch(`/api/matrices/${slug}/topics`, {
+          await fetchMutation(`/api/matrices/${slug}/topics`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -589,32 +610,36 @@ export function MatrixApp({ slug }: { slug: string }) {
     setInlineStatus("Deleting note…");
     setBusy(true);
     try {
-      await fetch(`/api/matrices/${slug}/topics/${topicId}`, {
+      await fetchMutation(`/api/matrices/${slug}/topics/${topicId}`, {
         method: "DELETE",
         credentials: "include",
       });
       await load();
       pushHistory({
         undo: async () => {
-          const r = await fetch(`/api/matrices/${slug}/topics`, {
+          const r = await fetchMutation(`/api/matrices/${slug}/topics`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
             body: JSON.stringify({ text: snap.text, quadrant: snap.quadrant }),
           });
-          if (r.ok) {
-            const j = (await r.json()) as TopicDto;
-            restoredId = j.id;
-          }
+          const j = (await r.json()) as TopicDto;
+          restoredId = j.id;
         },
         redo: async () => {
           if (!restoredId) return;
-          await fetch(`/api/matrices/${slug}/topics/${restoredId}`, {
+          await fetchMutation(`/api/matrices/${slug}/topics/${restoredId}`, {
             method: "DELETE",
             credentials: "include",
           });
         },
       });
+    } catch (error) {
+      if (error instanceof HttpMutationError) {
+        showToast(await messageFromFailedResponse(error.response));
+      } else {
+        showToast("Delete failed.");
+      }
     } finally {
       setBusy(false);
       setInlineStatus(null);
@@ -642,7 +667,7 @@ export function MatrixApp({ slug }: { slug: string }) {
       await load();
       pushHistory({
         undo: async () => {
-          await fetch(`/api/matrices/${slug}/topics/${topicId}`, {
+          await fetchMutation(`/api/matrices/${slug}/topics/${topicId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -650,7 +675,7 @@ export function MatrixApp({ slug }: { slug: string }) {
           });
         },
         redo: async () => {
-          await fetch(`/api/matrices/${slug}/topics/${topicId}`, {
+          await fetchMutation(`/api/matrices/${slug}/topics/${topicId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
