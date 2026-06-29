@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { canAccessMatrix } from "@/lib/matrix-authorization";
+import { createTopicWithSortOrder } from "@/lib/topic-create";
 import { isValidMatrixSlug } from "@/lib/slug";
 import { createTopicSchema } from "@/lib/validation";
 
@@ -34,20 +35,7 @@ export async function POST(
       );
     }
 
-    const maxOrder = await prisma.topic.aggregate({
-      where: { matrixId: matrix.id, quadrant: parsed.data.quadrant },
-      _max: { sortOrder: true },
-    });
-    const sortOrder = (maxOrder._max.sortOrder ?? -1) + 1;
-
-    const topic = await prisma.topic.create({
-      data: {
-        matrixId: matrix.id,
-        text: parsed.data.text,
-        quadrant: parsed.data.quadrant,
-        sortOrder,
-      },
-    });
+    const topic = await createTopicWithSortOrder(prisma, matrix.id, parsed.data);
 
     return NextResponse.json(
       {
