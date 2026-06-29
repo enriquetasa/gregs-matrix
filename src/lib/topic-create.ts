@@ -1,6 +1,6 @@
 import type { Prisma, Quadrant, Topic } from "@prisma/client";
 
-type TopicCreateClient = {
+export type TopicCreateClient = {
   $transaction: <T>(
     fn: (tx: Prisma.TransactionClient) => Promise<T>,
   ) => Promise<T>;

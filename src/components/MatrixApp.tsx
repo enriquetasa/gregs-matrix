@@ -419,8 +419,12 @@ export function MatrixApp({ slug }: { slug: string }) {
       undoPastRef.current = past.slice(0, -1);
       undoFutureRef.current = [frame, ...undoFutureRef.current];
       bumpHistory();
-    } catch {
-      showToast("Undo failed.");
+    } catch (error) {
+      if (error instanceof HttpMutationError) {
+        showToast(await messageFromFailedResponse(error.response));
+      } else {
+        showToast("Undo failed.");
+      }
     } finally {
       setBusy(false);
       setInlineStatus(null);
@@ -440,8 +444,12 @@ export function MatrixApp({ slug }: { slug: string }) {
       undoFutureRef.current = future.slice(1);
       undoPastRef.current = [...undoPastRef.current, frame];
       bumpHistory();
-    } catch {
-      showToast("Redo failed.");
+    } catch (error) {
+      if (error instanceof HttpMutationError) {
+        showToast(await messageFromFailedResponse(error.response));
+      } else {
+        showToast("Redo failed.");
+      }
     } finally {
       setBusy(false);
       setInlineStatus(null);
@@ -573,13 +581,13 @@ export function MatrixApp({ slug }: { slug: string }) {
       await load();
       pushHistory({
         undo: async () => {
-          await fetch(`/api/matrices/${slug}/topics/${dto.id}`, {
+          await fetchMutation(`/api/matrices/${slug}/topics/${dto.id}`, {
             method: "DELETE",
             credentials: "include",
           });
         },
         redo: async () => {
-          await fetch(`/api/matrices/${slug}/topics`, {
+          await fetchMutation(`/api/matrices/${slug}/topics`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -659,7 +667,7 @@ export function MatrixApp({ slug }: { slug: string }) {
       await load();
       pushHistory({
         undo: async () => {
-          await fetch(`/api/matrices/${slug}/topics/${topicId}`, {
+          await fetchMutation(`/api/matrices/${slug}/topics/${topicId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -667,7 +675,7 @@ export function MatrixApp({ slug }: { slug: string }) {
           });
         },
         redo: async () => {
-          await fetch(`/api/matrices/${slug}/topics/${topicId}`, {
+          await fetchMutation(`/api/matrices/${slug}/topics/${topicId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             credentials: "include",

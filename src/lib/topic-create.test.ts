@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Quadrant } from "@prisma/client";
-import { createTopicWithSortOrder } from "./topic-create";
+import { createTopicWithSortOrder, type TopicCreateClient } from "./topic-create";
 
 const quadrant = "DO_NOW" as Quadrant;
 
@@ -11,6 +11,10 @@ describe("createTopicWithSortOrder", () => {
     async (callback: (tx: { topic: { aggregate: typeof aggregate; create: typeof create } }) => unknown) =>
       callback({ topic: { aggregate, create } }),
   );
+
+  const db = {
+    $transaction: transaction,
+  } as unknown as TopicCreateClient;
 
   beforeEach(() => {
     aggregate.mockReset();
@@ -28,7 +32,7 @@ describe("createTopicWithSortOrder", () => {
 
   it("creates a topic inside a transaction with the next sort order", async () => {
     const topic = await createTopicWithSortOrder(
-      { $transaction: transaction },
+      db,
       "matrix-1",
       { text: "Note", quadrant },
     );
@@ -53,7 +57,7 @@ describe("createTopicWithSortOrder", () => {
     aggregate.mockResolvedValue({ _max: { sortOrder: null } });
 
     await createTopicWithSortOrder(
-      { $transaction: transaction },
+      db,
       "matrix-1",
       { text: "First", quadrant },
     );
