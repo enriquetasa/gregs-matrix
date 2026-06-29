@@ -35,10 +35,10 @@ Open [http://localhost:3000](http://localhost:3000), create a matrix, then use `
 3. Set environment variables:
 
 - `DATABASE_URL` — connection string for the **application user** (limited privileges). The Next.js server uses this for all Prisma queries at runtime.
-- `DATABASE_MIGRATE_URL` — connection string for **`doadmin`** (or another role that owns the database / can create objects in `public`). Used **only** to run `prisma migrate deploy` when the container starts. Omit it only if `DATABASE_URL` already has migration rights (for example local Docker Postgres as `postgres`).
+- `DATABASE_MIGRATE_URL` — connection string for **`doadmin`** (or another role that owns the database / can create objects in `public`). Used **only** when running `npm run db:migrate` in a release job or one-off task — not by the running app container. Omit it only if `DATABASE_URL` already has migration rights (for example local Docker Postgres as `postgres`).
 - `SESSION_SECRET` — random string, **minimum 32 characters**, used to sign session cookies.
 
-4. On first deploy, the Docker image runs `node scripts/migrate-deploy.cjs` (migrations) then `npm run start`. `migrate-deploy` prefers `DATABASE_MIGRATE_URL` so the app user does not need `CREATE` on schema `public` (PostgreSQL 15+). If you use a buildpack without this Dockerfile, run `npm run db:migrate` (with the same env vars) in a **Job** or release phase before traffic hits the app.
+4. **Run migrations before each deploy**, not when app containers start (avoids race conditions when multiple instances boot at once). On DigitalOcean App Platform, add a **Job** or pre-deploy command that runs `npm run db:migrate` with `DATABASE_MIGRATE_URL` set, then deploy the web service with `npm run start`. `migrate-deploy` prefers `DATABASE_MIGRATE_URL` so the app user does not need `CREATE` on schema `public` (PostgreSQL 15+). If you use a buildpack without this Dockerfile, use the same release-phase migrate step before traffic hits the app.
 
 5. **Grant the app user access to Prisma tables.** Migrations run as `doadmin`, so `Matrix` and `Topic` are owned by that role. Your **app** user (in `DATABASE_URL`) must receive DML rights.
 
@@ -78,7 +78,7 @@ Use double quotes around the user name whenever it contains hyphens (e.g. `"greg
 
 If `permission denied for table Matrix` still appears, confirm the app user in `DATABASE_URL` matches the `GRANT ... TO` role (and redeploy after changing env vars).
 
-6. Optional: set **HTTP port** to `3000` and enable health checks on `GET /api/health`.
+6. Set **HTTP port** to `3000` and enable health checks on `GET /api/health`. The endpoint returns `200` when Postgres is reachable and `503` when it is not.
 
 There is no built-in “forgot password” for a matrix; if you lose the password, create a new matrix or reset `passwordHash` in the database.
 
