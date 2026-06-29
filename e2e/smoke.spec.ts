@@ -13,7 +13,7 @@ test.describe("smoke", () => {
     await expect(page.getByText("Importance × Ease")).toBeVisible();
     await expect(page.getByText("Do now")).toBeVisible();
     await expect(page.getByText("Not important")).toBeVisible();
-    await expect(page.getByText("Important")).toBeVisible();
+    await expect(page.getByText("Important", { exact: true })).toBeVisible();
     await expect(page.getByText("Easy", { exact: true })).toBeVisible();
     await expect(page.getByText("Hard", { exact: true })).toBeVisible();
   });
