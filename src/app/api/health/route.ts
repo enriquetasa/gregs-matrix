@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { buildHealthCheckResult } from "@/lib/health";
 
 export async function GET() {
-  return NextResponse.json({ ok: true }, { status: 200 });
+  const { body, status } = await buildHealthCheckResult(() =>
+    prisma.$queryRaw`SELECT 1`,
+  );
+  return NextResponse.json(body, { status });
 }
