@@ -2,6 +2,7 @@ export const hasIntegrationDatabase = Boolean(process.env.DATABASE_URL);
 
 type JsonRequestInit = Omit<RequestInit, "body"> & {
   json?: unknown;
+  body?: BodyInit | null;
 };
 
 export function jsonRequest(url: string, init: JsonRequestInit = {}): Request {
