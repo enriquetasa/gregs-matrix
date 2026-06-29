@@ -39,4 +39,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-CMD ["sh", "-c", "node scripts/migrate-deploy.cjs && npm run start"]
+CMD ["npm", "run", "start"]
